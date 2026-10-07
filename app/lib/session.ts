@@ -8,9 +8,9 @@ const SESSION_DAYS = 7;
 type SessionPayload = { userId: string };
 
 function getKey() {
-  const secret = process.env.SESSION_SECRET;
+  const secret = process.env.AUTH_SECRET;
   if (!secret) {
-    throw new Error("SESSION_SECRET is not set in .env.local");
+    throw new Error("AUTH_SECRET is not set in .env.local");
   }
   return new TextEncoder().encode(secret);
 }
