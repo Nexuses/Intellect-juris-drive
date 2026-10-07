@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/app/lib/dal";
-import { createFolder, createFolderTree, deleteItem, renameItem } from "@/app/lib/drive";
+import { createFolder, createFolderTree, deleteItem, getFile, renameItem } from "@/app/lib/drive";
+import { presignFile } from "@/app/lib/storage";
 
 type Result = { error?: string };
 
@@ -49,6 +50,21 @@ export async function renameItemAction(itemId: string, name: string): Promise<Re
 
   refreshDrive();
   return {};
+}
+
+export async function getFileLinkAction(
+  itemId: string,
+): Promise<{ url?: string; error?: string }> {
+  const userId = await currentUserId();
+  if (!userId) return { error: "Your session has expired. Please log in again." };
+
+  const file = await getFile(userId, itemId);
+  if (!file?.storageKey) return { error: "This file is not in storage." };
+  if (!file.storageKey.includes("/")) {
+    return { error: "This file was uploaded before S3. Upload it again to get a link." };
+  }
+
+  return { url: await presignFile(file.storageKey) };
 }
 
 export async function deleteItemAction(itemId: string): Promise<Result> {

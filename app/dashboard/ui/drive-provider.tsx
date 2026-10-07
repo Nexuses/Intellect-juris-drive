@@ -18,13 +18,14 @@ import {
 } from "@/app/actions/drive";
 import type { DriveItem } from "@/app/lib/drive";
 import { ContextMenu, type MenuEntry } from "./context-menu";
-import { DeleteDialog, NameDialog } from "./drive-dialogs";
+import { DeleteDialog, LinkDialog, NameDialog } from "./drive-dialogs";
 import { fileKind } from "./file-kind";
 import {
   CheckIcon,
   CloseIcon,
   DownloadIcon,
   ErrorIcon,
+  LinkIcon,
   FileTypeIcon,
   FileUploadIcon,
   FolderUploadIcon,
@@ -46,6 +47,7 @@ type DialogState =
   | { kind: "new-folder" }
   | { kind: "rename"; item: DriveItem }
   | { kind: "delete"; item: DriveItem }
+  | { kind: "link"; item: DriveItem }
   | null;
 
 type UploadStatus = "queued" | "uploading" | "done" | "error";
@@ -199,7 +201,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     return [
       { label: "Open", icon: <OpenIcon />, onSelect: () => openItem(item) },
       ...(item.type === "file"
-        ? [{ label: "Download", icon: <DownloadIcon />, onSelect: () => downloadItem(item) }]
+        ? [
+            { label: "Download", icon: <DownloadIcon />, onSelect: () => downloadItem(item) },
+            {
+              label: "Get S3 link",
+              icon: <LinkIcon />,
+              onSelect: () => setDialog({ kind: "link", item }),
+            },
+          ]
         : []),
       { label: "Rename", icon: <RenameIcon />, onSelect: () => setDialog({ kind: "rename", item }) },
       "divider",
@@ -281,6 +290,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           onSubmit={async (name) => (await renameItemAction(dialog.item.id, name)).error}
         />
       )}
+      {dialog?.kind === "link" && <LinkDialog item={dialog.item} onClose={closeDialog} />}
       {dialog?.kind === "delete" && (
         <DeleteDialog
           item={dialog.item}

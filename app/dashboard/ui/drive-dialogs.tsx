@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { getFileLinkAction } from "@/app/actions/drive";
 import type { DriveItem } from "@/app/lib/drive";
 import { Modal } from "@/app/ui/modal";
 
@@ -69,6 +70,69 @@ export function NameDialog({
           </button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+export function LinkDialog({
+  item,
+  onClose,
+}: {
+  item: DriveItem;
+  onClose: () => void;
+}) {
+  const [url, setUrl] = useState<string>();
+  const [error, setError] = useState<string>();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getFileLinkAction(item.id).then((result) => {
+      if (!active) return;
+      if (result.error || !result.url) setError(result.error ?? "Couldn't create a link.");
+      else setUrl(result.url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [item.id]);
+
+  async function copy() {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      setError("Couldn't copy automatically. Select the link and copy it.");
+    }
+  }
+
+  return (
+    <Modal title="S3 link" description={item.name} onClose={onClose}>
+      {error && <p className="text-sm text-[#8c3a32]">{error}</p>}
+      {!error && !url && <p className="text-sm text-ink/60">Creating link...</p>}
+      {url && (
+        <>
+          <input
+            readOnly
+            value={url}
+            aria-label="S3 link"
+            onFocus={(event) => event.currentTarget.select()}
+            className="h-12 w-full rounded-lg border border-sand bg-cream px-3 text-sm text-ink outline-none"
+          />
+          <p className="mt-2 text-xs text-ink/60">
+            Anyone with this link can open the file. It stops working after 7 days.
+          </p>
+          <div className="mt-6 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className={textButtonClass}>
+              Close
+            </button>
+            <button type="button" onClick={() => void copy()} className={textButtonClass}>
+              {copied ? "Copied" : "Copy link"}
+            </button>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }
