@@ -40,12 +40,12 @@ export function AdminSidebar({ name, email }: { name: string; email: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden px-3 py-4">
-      <Link href="/admin/dashboard" className="mb-6 flex justify-center pt-1">
+    <aside className="flex h-screen w-64 shrink-0 flex-col px-3 py-4">
+      <Link href="/admin/dashboard" className="mb-6 flex shrink-0 justify-center pt-1">
         <Logo priority className="h-auto w-[120px]" />
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
@@ -65,7 +65,7 @@ export function AdminSidebar({ name, email }: { name: string; email: string }) {
         })}
       </nav>
 
-        <div className="rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(41,45,48,0.08)] transition hover:shadow-[0_8px_24px_-16px_rgba(41,45,48,0.35)]">
+      <div className="mt-4 shrink-0 rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(41,45,48,0.08)] transition hover:shadow-[0_8px_24px_-16px_rgba(41,45,48,0.35)]">
         <div className="flex items-center gap-3">
           <UserAvatar name={name} size={36} />
           <div className="min-w-0">
