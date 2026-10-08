@@ -2,8 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/app/lib/dal";
-import { createFolder, createFolderTree, deleteItem, getFile, renameItem } from "@/app/lib/drive";
-import { presignFile } from "@/app/lib/storage";
+import {
+  createFolder,
+  createFolderTree,
+  deleteItem,
+  getFile,
+  renameItem,
+  saveFileLink,
+} from "@/app/lib/drive";
+import { keyFromLink, publicFileUrl } from "@/app/lib/storage";
 
 type Result = { error?: string };
 
@@ -59,12 +66,14 @@ export async function getFileLinkAction(
   if (!userId) return { error: "Your session has expired. Please log in again." };
 
   const file = await getFile(userId, itemId);
-  if (!file?.storageKey) return { error: "This file is not in storage." };
-  if (!file.storageKey.includes("/")) {
+  const storageKey = file?.s3Url ? keyFromLink(file.s3Url) : file?.storageKey;
+  if (!storageKey?.includes("/")) {
     return { error: "This file was uploaded before S3. Upload it again to get a link." };
   }
 
-  return { url: await presignFile(file.storageKey) };
+  const url = publicFileUrl(storageKey);
+  if (file?.s3Url !== url) await saveFileLink(userId, itemId, url);
+  return { url };
 }
 
 export async function deleteItemAction(itemId: string): Promise<Result> {

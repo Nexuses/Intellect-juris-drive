@@ -121,7 +121,7 @@ export function LinkDialog({
             className="h-12 w-full rounded-lg border border-sand bg-cream px-3 text-sm text-ink outline-none"
           />
           <p className="mt-2 text-xs text-ink/60">
-            Anyone with this link can open the file. It stops working after 7 days.
+            Anyone with this link can open the file. It does not expire.
           </p>
           <div className="mt-6 flex justify-end gap-2">
             <button type="button" onClick={onClose} className={textButtonClass}>

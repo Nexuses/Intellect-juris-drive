@@ -22,6 +22,12 @@ export const HomeIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const ChartIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 9h4v11H4zm6-5h4v16h-4zm6 8h4v8h-4z" />
+  </Svg>
+);
+
 export const FolderIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />

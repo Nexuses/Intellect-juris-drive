@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/app/lib/dal";
 import { getFile } from "@/app/lib/drive";
-import { readFile } from "@/app/lib/storage";
+import { keyFromLink, readFile } from "@/app/lib/storage";
 
 // Only these types are rendered in the browser; everything else is downloaded so
 // uploaded HTML/SVG can never run as a page on this site.
@@ -12,7 +12,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const file = await getFile(user.id, id);
-  if (!file?.storageKey) return new Response("File not found.", { status: 404 });
+  const storageKey = file?.s3Url ? keyFromLink(file.s3Url) : file?.storageKey;
+  if (!file || !storageKey) return new Response("File not found.", { status: 404 });
 
   const mimeType = file.mimeType || "application/octet-stream";
   const wantsDownload = new URL(request.url).searchParams.has("download");
@@ -28,5 +29,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   });
   if (typeof file.size === "number") headers.set("Content-Length", String(file.size));
 
-  return new Response(await readFile(file.storageKey), { headers });
+  return new Response(await readFile(storageKey), { headers });
 }

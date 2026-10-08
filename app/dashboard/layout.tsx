@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { requireUser } from "@/app/lib/dal";
+import { ChatWidget } from "@/app/ui/chat-widget";
 import { LogoutButton } from "@/app/ui/logout-button";
 import { UserAvatar } from "@/app/ui/user-avatar";
 import { DriveProvider } from "./ui/drive-provider";
@@ -11,7 +12,7 @@ export default async function DriveLayout({ children }: { children: ReactNode })
 
   return (
     <DriveProvider>
-      <div className="flex h-screen overflow-hidden bg-cream text-ink">
+      <div className="flex h-screen max-h-screen min-h-0 flex-1 overflow-hidden bg-cream text-ink">
         <DriveSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-16 shrink-0 items-center gap-4 pr-4">
@@ -30,6 +31,7 @@ export default async function DriveLayout({ children }: { children: ReactNode })
           </div>
         </div>
       </div>
+      <ChatWidget />
     </DriveProvider>
   );
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { ObjectId } from "mongodb";
 import { fileKind, type FileKind } from "./file-kind";
 import { getDb } from "./mongodb";
-import { deleteFiles } from "./storage";
+import { deleteFiles, keyFromLink } from "./storage";
 
 export type ItemType = "folder" | "file";
 
@@ -14,6 +14,8 @@ type ItemDoc = {
   name: string;
   mimeType?: string;
   size?: number;
+  /** S3 link for this file. Older uploads may still have `storageKey` instead. */
+  s3Url?: string;
   storageKey?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -203,11 +205,11 @@ export async function createFolderTree(
 export async function addFile(
   ownerId: string,
   parentId: string | null,
-  file: { name: string; mimeType: string; size: number; storageKey: string },
+  file: { name: string; mimeType: string; size: number; s3Url: string },
 ) {
   const owner = toObjectId(ownerId);
   const name = cleanName(file.name);
-  if (!owner || !name) return { error: "Invalid file name." };
+  if (!owner || !name || !file.s3Url) return { error: "Invalid file name." };
 
   const parent = await resolveParent(owner, parentId);
   if (!parent.ok) return { error: "The destination folder no longer exists." };
@@ -221,12 +223,27 @@ export async function addFile(
     name,
     mimeType: file.mimeType || "application/octet-stream",
     size: file.size,
-    storageKey: file.storageKey,
+    s3Url: file.s3Url,
     createdAt: now,
     updatedAt: now,
   };
   await (await items()).insertOne(doc);
   return { item: toDriveItem(doc) };
+}
+
+export async function saveFileLink(ownerId: string, fileId: string, s3Url: string) {
+  const owner = toObjectId(ownerId);
+  const id = toObjectId(fileId);
+  if (!owner || !id) return;
+  await (await items()).updateOne(
+    { _id: id, ownerId: owner, type: "file" },
+    { $set: { s3Url }, $unset: { storageKey: "" } },
+  );
+}
+
+function objectKey(doc: { s3Url?: string; storageKey?: string }) {
+  if (doc.s3Url) return keyFromLink(doc.s3Url);
+  return doc.storageKey ?? null;
 }
 
 export async function getFile(ownerId: string, fileId: string) {
@@ -260,20 +277,23 @@ export async function deleteItem(ownerId: string, itemId: string) {
   if (!root) return { error: "This item no longer exists." };
 
   const ids: ObjectId[] = [root._id];
-  const storageKeys: string[] = root.storageKey ? [root.storageKey] : [];
+  const storageKeys: string[] = [];
+  const rootKey = objectKey(root);
+  if (rootKey) storageKeys.push(rootKey);
   let frontier = root.type === "folder" ? [root._id] : [];
 
   while (frontier.length > 0) {
     const children = await col
       .find(
         { ownerId: owner, parentId: { $in: frontier } },
-        { projection: { _id: 1, type: 1, storageKey: 1 } },
+        { projection: { _id: 1, type: 1, s3Url: 1, storageKey: 1 } },
       )
       .toArray();
     frontier = [];
     for (const child of children) {
       ids.push(child._id);
-      if (child.storageKey) storageKeys.push(child.storageKey);
+      const key = objectKey(child);
+      if (key) storageKeys.push(key);
       if (child.type === "folder") frontier.push(child._id);
     }
   }
@@ -347,13 +367,108 @@ export async function getWorkspaceUsage() {
   return { totals, byOwner };
 }
 
+/** Upload counts for one person. Other accounts are not included. */
+export async function getOwnerUsage(ownerId: string): Promise<OwnerUsage> {
+  const owner = toObjectId(ownerId);
+  const usage: OwnerUsage = { files: 0, folders: 0, bytes: 0, kinds: emptyKinds() };
+  if (!owner) return usage;
+
+  const docs = await (await items()).find({ ownerId: owner }).toArray();
+  for (const doc of docs) {
+    if (doc.type === "folder") {
+      usage.folders += 1;
+      continue;
+    }
+    usage.files += 1;
+    usage.kinds[fileKind(doc.mimeType ?? null, doc.name)] += 1;
+    usage.bytes += doc.size ?? 0;
+  }
+  return usage;
+}
+
+export type StoredFileLink = {
+  name: string;
+  folder: string;
+  s3Url: string | null;
+  kind: FileKind;
+};
+
+export type StoredFolder = {
+  name: string;
+  path: string;
+};
+
+/** Files and folders for one user. Folder paths come from the database, not from S3. */
+export async function getDriveSnapshot(ownerId: string): Promise<{
+  files: StoredFileLink[];
+  folders: StoredFolder[];
+}> {
+  const owner = toObjectId(ownerId);
+  if (!owner) return { files: [], folders: [] };
+
+  const docs = await (await items()).find({ ownerId: owner }).toArray();
+  const folderDocs = new Map(
+    docs.filter((doc) => doc.type === "folder").map((doc) => [doc._id.toHexString(), doc]),
+  );
+
+  function folderPath(parentId: ObjectId | null) {
+    const names: string[] = [];
+    let current = parentId;
+    const seen = new Set<string>();
+    while (current && names.length < MAX_FOLDER_DEPTH) {
+      const id = current.toHexString();
+      if (seen.has(id)) break;
+      seen.add(id);
+      const folder = folderDocs.get(id);
+      if (!folder) break;
+      names.unshift(folder.name);
+      current = folder.parentId;
+    }
+    return names.length > 0 ? names.join(" / ") : "Drive";
+  }
+
+  const byName = (a: { name: string }, b: { name: string }) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+
+  const files = docs
+    .filter((doc) => doc.type === "file")
+    .sort(byName)
+    .map((doc) => ({
+      name: doc.name,
+      folder: folderPath(doc.parentId),
+      s3Url: doc.s3Url ?? null,
+      kind: fileKind(doc.mimeType ?? null, doc.name),
+    }));
+
+  const folders = docs
+    .filter((doc) => doc.type === "folder")
+    .sort(byName)
+    .map((doc) => {
+      const parent = folderPath(doc.parentId);
+      return {
+        name: doc.name,
+        path: parent === "Drive" ? doc.name : `${parent} / ${doc.name}`,
+      };
+    });
+
+  return { files, folders };
+}
+
+/** Files stored for one user, with the folder path and the permanent S3 link. */
+export async function listStoredFileLinks(ownerId: string): Promise<StoredFileLink[]> {
+  return (await getDriveSnapshot(ownerId)).files;
+}
+
 export async function deleteAllForOwner(ownerId: string) {
   const owner = toObjectId(ownerId);
   if (!owner) return;
   const col = await items();
   const files = await col
-    .find({ ownerId: owner, type: "file" }, { projection: { storageKey: 1 } })
+    .find({ ownerId: owner, type: "file" }, { projection: { s3Url: 1, storageKey: 1 } })
     .toArray();
   await col.deleteMany({ ownerId: owner });
-  await deleteFiles(files.flatMap((file) => (file.storageKey ? [file.storageKey] : [])));
+  await deleteFiles(files.flatMap((file) => {
+    const key = objectKey(file);
+    return key ? [key] : [];
+  }));
 }

@@ -20,16 +20,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Files must be 100 MB or smaller." }, { status: 413 });
   }
 
-  const storageKey = await saveFile(file, user.id);
+  const saved = await saveFile(file, user.id);
   const result = await addFile(user.id, parentId, {
     name: file.name,
     mimeType: file.type,
     size: file.size,
-    storageKey,
+    s3Url: saved.url,
   });
 
   if ("error" in result) {
-    await deleteFiles([storageKey]);
+    await deleteFiles([saved.key]);
     return Response.json({ error: result.error }, { status: 400 });
   }
 

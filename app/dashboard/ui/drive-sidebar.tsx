@@ -4,20 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/app/ui/logo";
 import { useDrive } from "./drive-provider";
-import { HomeIcon, PlusIcon } from "./icons";
+import { ChartIcon, HomeIcon, PlusIcon } from "./icons";
 
 export function DriveSidebar() {
   const pathname = usePathname();
   const { openNewMenu } = useDrive();
   const onDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/folders");
+  const onAnalytics = pathname === "/dashboard/analytics";
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col px-3 py-4">
+    <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden px-3 py-4">
       <Link href="/dashboard" className="mb-6 flex justify-center pt-1">
         <Logo priority className="h-auto w-[120px]" />
       </Link>
 
-      <nav>
+      <nav className="flex flex-col gap-1">
         <Link
           href="/dashboard"
           className={`flex items-center gap-4 rounded-full px-4 py-2.5 text-sm transition duration-200 ${
@@ -28,6 +29,17 @@ export function DriveSidebar() {
         >
           <HomeIcon />
           Dashboard
+        </Link>
+        <Link
+          href="/dashboard/analytics"
+          className={`flex items-center gap-4 rounded-full px-4 py-2.5 text-sm transition duration-200 ${
+            onAnalytics
+              ? "bg-sand font-semibold text-ink"
+              : "text-ink/70 hover:bg-sand/80 hover:text-ink"
+          }`}
+        >
+          <ChartIcon />
+          Analytics
         </Link>
       </nav>
 

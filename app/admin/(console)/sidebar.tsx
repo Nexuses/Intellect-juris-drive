@@ -17,6 +17,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+        <path d="M4 9h4v11H4zm6-5h4v16h-4zm6 8h4v8h-4z" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/users",
     label: "User Management",
     icon: (
@@ -31,7 +40,7 @@ export function AdminSidebar({ name, email }: { name: string; email: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col px-3 py-4">
+    <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden px-3 py-4">
       <Link href="/admin/dashboard" className="mb-6 flex justify-center pt-1">
         <Logo priority className="h-auto w-[120px]" />
       </Link>

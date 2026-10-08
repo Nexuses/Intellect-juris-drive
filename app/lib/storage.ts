@@ -6,9 +6,8 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// File bytes live in S3. Callers only see an opaque object key.
+// File bytes live in S3. The database stores the link, not the file.
 
 function required(name: string) {
   const value = process.env[name];
@@ -30,7 +29,16 @@ function bucket() {
   return required("AWS_S3_BUCKET");
 }
 
-export async function saveFile(file: File, ownerId: string): Promise<string> {
+/** Public object address. It stays valid because the bucket allows public reads. */
+export function publicFileUrl(storageKey: string) {
+  const encodedKey = storageKey
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `https://${bucket()}.s3.${required("AWS_REGION")}.amazonaws.com/${encodedKey}`;
+}
+
+export async function saveFile(file: File, ownerId: string) {
   const key = `${ownerId}/${randomUUID()}`;
   await s3().send(
     new PutObjectCommand({
@@ -41,16 +49,23 @@ export async function saveFile(file: File, ownerId: string): Promise<string> {
       ContentLength: file.size,
     }),
   );
-  return key;
+  return { key, url: publicFileUrl(key) };
 }
 
-const LINK_SECONDS = 7 * 24 * 60 * 60;
-
-/** A temporary URL that opens this object directly from S3. Valid for 7 days. */
-export async function presignFile(storageKey: string) {
-  return getSignedUrl(s3(), new GetObjectCommand({ Bucket: bucket(), Key: storageKey }), {
-    expiresIn: LINK_SECONDS,
-  });
+/** Object key embedded in a virtual-hosted or path-style S3 URL. */
+export function keyFromLink(link: string) {
+  try {
+    const url = new URL(link);
+    const path = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+    if (!path) return null;
+    if (/^s3[.-]/.test(url.hostname)) {
+      const slash = path.indexOf("/");
+      return slash === -1 ? null : path.slice(slash + 1);
+    }
+    return path;
+  } catch {
+    return null;
+  }
 }
 
 export async function readFile(storageKey: string): Promise<ReadableStream> {
