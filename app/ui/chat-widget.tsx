@@ -3,9 +3,16 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 type Message = { role: "user" | "assistant"; content: string };
+type AskDetail = { text: string; send: boolean };
+
+const ASK_EVENT = "jev:ask";
+
+export function askJev(text: string, send: boolean) {
+  window.dispatchEvent(new CustomEvent<AskDetail>(ASK_EVENT, { detail: { text, send } }));
+}
 
 export function ChatWidget({
-  hint = "Ask where a file is, what is in a folder, for a summary, or about a link.",
+  hint = "Ask what your documents say, find a file by its content, summarize or compare files, or ask where something is.",
 }: {
   hint?: string;
 }) {
@@ -26,9 +33,9 @@ export function ChatWidget({
     if (list) list.scrollTop = list.scrollHeight;
   }, [messages, pending, error, open]);
 
-  async function send(event?: FormEvent) {
+  async function send(event?: FormEvent, text = draft) {
     event?.preventDefault();
-    const content = draft.trim();
+    const content = text.trim();
     if (!content || pending) return;
 
     const next = [...messages, { role: "user" as const, content }];
@@ -56,6 +63,30 @@ export function ChatWidget({
     }
   }
 
+  const sendRef = useRef(send);
+  useEffect(() => {
+    sendRef.current = send;
+  });
+
+  useEffect(() => {
+    function onAsk(event: Event) {
+      const { text, send: sendNow } = (event as CustomEvent<AskDetail>).detail;
+      setOpen(true);
+      if (sendNow) {
+        void sendRef.current(undefined, text);
+      } else {
+        setDraft(text);
+        requestAnimationFrame(() => {
+          const input = inputRef.current;
+          input?.focus();
+          input?.setSelectionRange(text.length, text.length);
+        });
+      }
+    }
+    window.addEventListener(ASK_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_EVENT, onAsk);
+  }, []);
+
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -76,7 +107,7 @@ export function ChatWidget({
             </span>
             <div>
               <p className="text-sm font-semibold text-ink">Jev</p>
-              <p className="text-xs text-ink/60">Ask about your drive</p>
+              <p className="text-xs text-ink/60">Ask about your drive and documents</p>
             </div>
           </header>
 

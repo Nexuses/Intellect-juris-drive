@@ -76,6 +76,14 @@ export async function readFile(storageKey: string): Promise<ReadableStream> {
   return result.Body.transformToWebStream();
 }
 
+export async function readFileBytes(storageKey: string): Promise<Uint8Array> {
+  const result = await s3().send(
+    new GetObjectCommand({ Bucket: bucket(), Key: storageKey }),
+  );
+  if (!result.Body) throw new Error("The file in storage is empty.");
+  return result.Body.transformToByteArray();
+}
+
 export async function deleteFiles(storageKeys: string[]) {
   const keys = storageKeys.filter(Boolean);
   if (keys.length === 0) return;

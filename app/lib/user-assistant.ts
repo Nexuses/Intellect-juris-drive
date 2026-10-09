@@ -1,8 +1,8 @@
 import "server-only";
+import { askJev } from "./ai-gateway";
+import { answerDocuments, docKeywordIntent, type DocIntent } from "./doc-ai";
 import { getDriveSnapshot, type StoredFileLink, type StoredFolder } from "./drive";
 import type { FileKind } from "./file-kind";
-
-const GATEWAY = "https://ai-gateway.vercel.sh/v1";
 
 type Intent =
   | "find"
@@ -13,7 +13,27 @@ type Intent =
   | "delete_check"
   | "duplicates"
   | "list_links"
+  | "doc_search"
+  | "compare_docs"
+  | "summarize_doc"
+  | "ask_docs"
   | "general";
+
+const DOC_INTENTS: Partial<Record<Intent, DocIntent>> = {
+  doc_search: "search",
+  compare_docs: "compare",
+  summarize_doc: "summarize",
+  ask_docs: "ask",
+};
+
+const FROM_DOC_INTENT: Record<DocIntent, Intent> = {
+  search: "doc_search",
+  compare: "compare_docs",
+  summarize: "summarize_doc",
+  ask: "ask_docs",
+};
+
+type ChatTurn = { role: "user" | "assistant"; content: string };
 
 const STOP_WORDS = new Set([
   "where", "is", "the", "my", "file", "files", "uploaded", "upload", "find", "show", "me",
@@ -107,8 +127,20 @@ function keywordIntent(text: string, folders: StoredFolder[]): Intent | null {
   const lower = text.toLowerCase();
   if (/https?:\/\/\S+/.test(lower) && /amazonaws|s3\./.test(lower)) return "explain_link";
   if (/\b(duplicat|same name|same file name|twice)\b/.test(lower)) return "duplicates";
-  if (/\b(how many|summary|summarize|summarise|stats|overview)\b/.test(lower)) return "summary";
-  if (/\bhow\b/.test(lower)) return "guide";
+  if (
+    /\b(how many|stats|statistics)\b/.test(lower) ||
+    (/\b(summar|overview)/.test(lower) && /\b(my drive|the drive|drive|my files|all my files|everything)\b/.test(lower))
+  ) {
+    return "summary";
+  }
+  const docIntent = docKeywordIntent(text);
+  if (docIntent) return FROM_DOC_INTENT[docIntent];
+  if (
+    /\bhow (do|can|to|should|would)\b/.test(lower) &&
+    /\b(upload|folder|rename|delete|remove|search|link|share|create|download|open|move)\b/.test(lower)
+  ) {
+    return "guide";
+  }
   if (/\b(delete|remove)\b/.test(lower)) return "delete_check";
   if (/\b(s3|links?)\b/.test(lower) && /\b(show|share|list|send|give|my|all)\b/.test(lower)) {
     return "list_links";
@@ -118,67 +150,41 @@ function keywordIntent(text: string, folders: StoredFolder[]): Intent | null {
   return null;
 }
 
-async function jevIntent(apiKey: string, message: string): Promise<Intent | null> {
-  try {
-    const response = await fetch(`${GATEWAY}/evaluate`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+const INTENTS: Intent[] = [
+  "find", "folder", "summary", "explain_link", "guide", "delete_check", "duplicates", "list_links",
+  "doc_search", "compare_docs", "summarize_doc", "ask_docs", "general",
+];
+
+async function jevIntent(message: string): Promise<Intent | null> {
+  const answers = await askJev(message, {
+    intent: {
+      type: "choice",
+      instructions: "What does this person want from their own document drive?",
+      criteria: {
+        find: "Find a file by its name and show its folder and S3 link",
+        folder: "List what is inside one folder",
+        summary: "Count their files by type and name their folders",
+        explain_link: "Explain whether a pasted S3 link expires and which file it is",
+        guide: "Steps for creating a folder, uploading, renaming, searching, or deleting",
+        delete_check: "Say what would be deleted, without deleting it",
+        duplicates: "Find files that share the same name",
+        list_links: "List their files and permanent S3 links",
+        doc_search: "Find documents by what is written inside them, not by file name",
+        compare_docs: "Compare two or more documents",
+        summarize_doc: "Summarize one document",
+        ask_docs: "A question whose answer is written inside their documents",
+        general: "A greeting or something unrelated to their files",
       },
-      body: JSON.stringify({
-        model: "typesafe-ai/jev",
-        state: message,
-        questions: {
-          intent: {
-            type: "choice",
-            instructions: "What does this person want from their own document drive?",
-            criteria: {
-              find: "Find a file by name and show its folder and S3 link",
-              folder: "List what is inside one folder",
-              summary: "Count their files by type and name their folders",
-              explain_link: "Explain whether a pasted S3 link expires and which file it is",
-              guide: "Steps for creating a folder, uploading, renaming, searching, or deleting",
-              delete_check: "Say what would be deleted, without deleting it",
-              duplicates: "Find files that share the same name",
-              list_links: "List their files and permanent S3 links",
-              general: "A greeting or something else",
-            },
-          },
-        },
-      }),
-    });
-    if (!response.ok) return null;
-    const data: unknown = await response.json();
-    const choice =
-      data &&
-      typeof data === "object" &&
-      "answers" in data &&
-      data.answers &&
-      typeof data.answers === "object" &&
-      "intent" in data.answers &&
-      data.answers.intent &&
-      typeof data.answers.intent === "object" &&
-      "choice" in data.answers.intent
-        ? data.answers.intent.choice
-        : null;
-    if (typeof choice !== "string") return null;
-    const intents: Intent[] = [
-      "find", "folder", "summary", "explain_link", "guide", "delete_check", "duplicates", "list_links", "general",
-    ];
-    return intents.includes(choice as Intent) ? (choice as Intent) : null;
-  } catch {
-    return null;
-  }
+    },
+  });
+  const choice = answers?.intent?.choice;
+  return choice && INTENTS.includes(choice as Intent) ? (choice as Intent) : null;
 }
 
 function answerFind(text: string, files: StoredFileLink[]) {
   if (files.length === 0) return "Your drive has no files yet.";
   const matched = matchingFiles(text, files);
-  if (matched.length === 0) {
-    const names = files.map((file) => file.name).join("\n");
-    return `I couldn't find that file in your drive. These are the file names:\n\n${names}`;
-  }
+  if (matched.length === 0) return null;
   const lines = matched.map((file, index) => formatFile(file, index + 1));
   return `I found ${matched.length === 1 ? "this file" : `${matched.length} files`}:\n\n${lines.join("\n\n")}`;
 }
@@ -316,12 +322,22 @@ function answerList(files: StoredFileLink[]) {
   return `You uploaded ${files.length} ${label}:\n\n${files.map((file, index) => formatFile(file, index + 1)).join("\n\n")}`;
 }
 
-/** Answers a signed-in user from their own drive. Returns null for a general chat question. */
-export async function answerUserDrive(ownerId: string, message: string, apiKey: string) {
+/** Answers a signed-in user from their own drive and documents. Returns null for a general chat question. */
+export async function answerUserDrive(ownerId: string, messages: ChatTurn[]) {
+  const message = messages.at(-1)?.content ?? "";
   const { files, folders } = await getDriveSnapshot(ownerId);
-  const intent = keywordIntent(message, folders) ?? (await jevIntent(apiKey, message)) ?? "general";
-  if (intent === "general") return null;
-  if (intent === "find") return answerFind(message, files);
+  const scope = { ownerId, files };
+  const asksAboutOneFile = /^in\s+["“][^"“”]+["”],/i.test(message.trim()) && !docKeywordIntent(message);
+  const intent: Intent = asksAboutOneFile
+    ? "ask_docs"
+    : (keywordIntent(message, folders) ?? (await jevIntent(message)) ?? "general");
+
+  const docIntent = DOC_INTENTS[intent];
+  if (docIntent) return answerDocuments(scope, messages, docIntent);
+  if (intent === "general") return answerDocuments(scope, messages, "ask");
+  if (intent === "find") {
+    return answerFind(message, files) ?? answerDocuments(scope, messages, "search");
+  }
   if (intent === "folder") return answerFolder(message, files, folders);
   if (intent === "summary") return answerSummary(files, folders);
   if (intent === "explain_link") return answerLink(message, files);

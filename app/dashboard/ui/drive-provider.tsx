@@ -17,10 +17,12 @@ import {
   renameItemAction,
 } from "@/app/actions/drive";
 import type { DriveItem } from "@/app/lib/drive";
+import { askJev } from "@/app/ui/chat-widget";
 import { ContextMenu, type MenuEntry } from "./context-menu";
 import { DeleteDialog, LinkDialog, NameDialog } from "./drive-dialogs";
 import { fileKind } from "./file-kind";
 import {
+  ChatBubbleIcon,
   CheckIcon,
   CloseIcon,
   DownloadIcon,
@@ -32,6 +34,7 @@ import {
   NewFolderIcon,
   OpenIcon,
   RenameIcon,
+  SparkIcon,
   TrashIcon,
 } from "./icons";
 
@@ -207,6 +210,17 @@ export function DriveProvider({ children }: { children: ReactNode }) {
               label: "Get S3 link",
               icon: <LinkIcon />,
               onSelect: () => setDialog({ kind: "link", item }),
+            },
+            "divider" as const,
+            {
+              label: "Summarize with Jev",
+              icon: <SparkIcon />,
+              onSelect: () => askJev(`Summarize "${item.name}"`, true),
+            },
+            {
+              label: "Ask Jev about this file",
+              icon: <ChatBubbleIcon />,
+              onSelect: () => askJev(`In "${item.name}", `, false),
             },
           ]
         : []),

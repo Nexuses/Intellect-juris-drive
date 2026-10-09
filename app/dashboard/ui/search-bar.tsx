@@ -22,7 +22,7 @@ export function SearchBar() {
           name="q"
           type="search"
           defaultValue={query}
-          placeholder="Search in Drive"
+          placeholder="Search by name, or describe what a document says"
           autoComplete="off"
           className="h-full flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink/45"
         />

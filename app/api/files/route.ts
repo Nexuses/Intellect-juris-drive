@@ -1,8 +1,12 @@
+import { after } from "next/server";
 import { getCurrentUser } from "@/app/lib/dal";
+import { indexFile } from "@/app/lib/doc-index";
 import { addFile } from "@/app/lib/drive";
 import { deleteFiles, saveFile } from "@/app/lib/storage";
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -33,5 +37,6 @@ export async function POST(request: Request) {
     return Response.json({ error: result.error }, { status: 400 });
   }
 
+  after(() => indexFile(result.item.id));
   return Response.json({ item: result.item }, { status: 201 });
 }

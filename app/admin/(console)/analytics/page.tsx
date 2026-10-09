@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
+import { getIndexSummary, isBackfillRunning } from "@/app/lib/doc-index";
 import { getWorkspaceUsage, type KindCounts, type OwnerUsage } from "@/app/lib/drive";
 import { formatSize } from "@/app/lib/file-kind";
 import { listUsers } from "@/app/lib/users";
 import { UserAvatar } from "@/app/ui/user-avatar";
+import { ReadFilesButton } from "./read-files-button";
 
 export const metadata: Metadata = { title: "Analytics | Intellect Juris" };
 
@@ -55,8 +57,14 @@ function Count({ value }: { value: number }) {
 
 export default async function AdminAnalyticsPage() {
   await requireAdmin();
-  const [users, usage] = await Promise.all([listUsers(), getWorkspaceUsage()]);
+  const [users, usage, reading] = await Promise.all([listUsers(), getWorkspaceUsage(), getIndexSummary()]);
   const { totals } = usage;
+  const readingStats = [
+    { label: "Ready to search", value: reading.ready },
+    { label: "Waiting", value: reading.waiting },
+    { label: "Could not read", value: reading.failed },
+    { label: "Not supported", value: reading.unsupported },
+  ];
 
   const rows = [...users]
     .map((user) => ({ user, usage: usage.byOwner.get(user.id) ?? EMPTY_USAGE }))
@@ -105,6 +113,30 @@ export default async function AdminAnalyticsPage() {
             <p className="mt-1 text-2xl font-medium">{stat.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-sand">
+        <div className="flex items-center justify-between gap-4 border-b border-sand px-5 py-4">
+          <div>
+            <h2 className="text-base font-medium">Jev document reading</h2>
+            <p className="mt-0.5 text-xs text-ink/60">
+              Jev reads each upload so people can search, summarize, compare, and ask about what
+              files say. Video and old .doc, .xls, and .ppt files are not supported.
+            </p>
+          </div>
+          <ReadFilesButton
+            running={isBackfillRunning()}
+            disabled={reading.waiting === 0 && reading.failed === 0}
+          />
+        </div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          {readingStats.map((stat) => (
+            <div key={stat.label} className="rounded-xl bg-cream px-4 py-3">
+              <p className="text-xs text-ink/60">{stat.label}</p>
+              <p className="mt-1 text-2xl font-medium text-ink">{stat.value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-8 overflow-hidden rounded-2xl border border-sand">

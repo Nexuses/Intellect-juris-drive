@@ -1,6 +1,7 @@
 import "server-only";
 import { ObjectId } from "mongodb";
 import { fileKind, type FileKind } from "./file-kind";
+import { removeIndexForFiles, removeIndexForOwner } from "./doc-index";
 import { getDb } from "./mongodb";
 import { deleteFiles, keyFromLink } from "./storage";
 
@@ -299,6 +300,7 @@ export async function deleteItem(ownerId: string, itemId: string) {
   }
 
   await col.deleteMany({ _id: { $in: ids }, ownerId: owner });
+  await removeIndexForFiles(ids);
   await deleteFiles(storageKeys);
   return {};
 }
@@ -387,6 +389,8 @@ export async function getOwnerUsage(ownerId: string): Promise<OwnerUsage> {
 }
 
 export type StoredFileLink = {
+  id: string;
+  ownerId: string;
   name: string;
   folder: string;
   s3Url: string | null;
@@ -398,15 +402,15 @@ export type StoredFolder = {
   path: string;
 };
 
-/** Files and folders for one user. Folder paths come from the database, not from S3. */
-export async function getDriveSnapshot(ownerId: string): Promise<{
+/** Files and folders for one user, or every user when `ownerId` is null. Folder paths come from the database. */
+export async function getDriveSnapshot(ownerId: string | null): Promise<{
   files: StoredFileLink[];
   folders: StoredFolder[];
 }> {
-  const owner = toObjectId(ownerId);
-  if (!owner) return { files: [], folders: [] };
+  const owner = ownerId === null ? null : toObjectId(ownerId);
+  if (ownerId !== null && !owner) return { files: [], folders: [] };
 
-  const docs = await (await items()).find({ ownerId: owner }).toArray();
+  const docs = await (await items()).find(owner ? { ownerId: owner } : {}).toArray();
   const folderDocs = new Map(
     docs.filter((doc) => doc.type === "folder").map((doc) => [doc._id.toHexString(), doc]),
   );
@@ -434,6 +438,8 @@ export async function getDriveSnapshot(ownerId: string): Promise<{
     .filter((doc) => doc.type === "file")
     .sort(byName)
     .map((doc) => ({
+      id: doc._id.toHexString(),
+      ownerId: doc.ownerId.toHexString(),
       name: doc.name,
       folder: folderPath(doc.parentId),
       s3Url: doc.s3Url ?? null,
@@ -467,6 +473,7 @@ export async function deleteAllForOwner(ownerId: string) {
     .find({ ownerId: owner, type: "file" }, { projection: { s3Url: 1, storageKey: 1 } })
     .toArray();
   await col.deleteMany({ ownerId: owner });
+  await removeIndexForOwner(owner);
   await deleteFiles(files.flatMap((file) => {
     const key = objectKey(file);
     return key ? [key] : [];

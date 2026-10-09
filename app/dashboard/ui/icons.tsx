@@ -22,6 +22,18 @@ export const HomeIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const SparkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 11l.95 2.55L22.5 16.5l-2.55.95L19 20l-.95-2.55-2.55-.95 2.55-.95L19 13z" />
+  </Svg>
+);
+
+export const ChatBubbleIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3C6.48 3 2 6.94 2 11.8c0 2.55 1.32 4.84 3.4 6.4L4.2 21.5a.7.7 0 0 0 1 .76L9.1 20c.93.26 1.9.4 2.9.4 5.52 0 10-3.94 10-8.6S17.52 3 12 3z" />
+  </Svg>
+);
+
 export const ChartIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 9h4v11H4zm6-5h4v16h-4zm6 8h4v8h-4z" />

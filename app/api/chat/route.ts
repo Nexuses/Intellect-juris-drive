@@ -1,10 +1,16 @@
+import { after } from "next/server";
+import { WRITING_MODEL } from "@/app/lib/ai-gateway";
 import { getCurrentUser } from "@/app/lib/dal";
-import { listStoredFileLinks, type StoredFileLink } from "@/app/lib/drive";
+import { answerDocuments, docKeywordIntent } from "@/app/lib/doc-ai";
+import { getIndexSummary, indexUnreadFiles } from "@/app/lib/doc-index";
+import { getDriveSnapshot, listStoredFileLinks, type StoredFileLink } from "@/app/lib/drive";
 import { answerUserDrive } from "@/app/lib/user-assistant";
 import { listUsers, type PublicUser } from "@/app/lib/users";
 
 const GATEWAY = "https://ai-gateway.vercel.sh/v1";
-const CHAT_MODEL = "google/gemini-2.5-flash";
+const CHAT_MODEL = WRITING_MODEL;
+
+export const maxDuration = 300;
 const MAX_MESSAGES = 20;
 const MAX_CHARS = 4000;
 
@@ -165,17 +171,36 @@ export async function POST(request: Request) {
   if (!messages) return Response.json({ error: "Enter a message." }, { status: 400 });
 
   const latest = messages.at(-1)?.content ?? "";
-  if (user.role !== "admin") {
-    const answer = await answerUserDrive(user.id, latest, key);
-    if (answer) return Response.json({ reply: answer });
-  }
+  if ((await getIndexSummary()).waiting > 0) after(() => indexUnreadFiles());
 
-  const question = messages
-    .filter((message) => message.role === "user")
-    .map((message) => message.content)
-    .join("\n");
-  const records = await fileRecordsFor(user, question);
-  if (records && asksForStoredLinks(latest)) return Response.json({ reply: records });
+  let records: string | null = null;
+  try {
+    if (user.role !== "admin") {
+      const answer = await answerUserDrive(user.id, messages);
+      if (answer) return Response.json({ reply: answer });
+    }
+
+    const question = messages
+      .filter((message) => message.role === "user")
+      .map((message) => message.content)
+      .join("\n");
+    records = await fileRecordsFor(user, question);
+    if (records && asksForStoredLinks(latest)) return Response.json({ reply: records });
+
+    if (user.role === "admin") {
+      const [{ files }, people] = await Promise.all([getDriveSnapshot(null), listUsers()]);
+      const scope = {
+        ownerId: null,
+        files,
+        ownerNames: new Map(people.map((person) => [person.id, person.name])),
+      };
+      const answer = await answerDocuments(scope, messages, docKeywordIntent(latest) ?? "ask");
+      if (answer) return Response.json({ reply: answer });
+    }
+  } catch (error) {
+    console.error("Jev document answer failed", error);
+    return Response.json({ error: "Jev could not read the documents just now. Try again." }, { status: 502 });
+  }
 
   const topic = await jevTopic(key, latest);
 
@@ -196,6 +221,7 @@ export async function POST(request: Request) {
             topic ? `A classifier labeled this message as: ${topic}. Use that only as a hint.` : "",
             records ? `Stored file records:\n${records}` : "",
             "Users sign in on the user login page and get a private drive. They can create folders, upload files, upload a folder from their computer, search, rename, and delete.",
+            "Jev also reads uploaded documents. People can ask it to find a document by what it says, summarize a file, compare files by name, or answer questions with the source file and page.",
             "A folder is stored in the database. A file is stored in S3, and the database stores that file's permanent S3 link and the folder it belongs to.",
             "Get S3 link copies a public address that does not expire. Anyone with that link can open the file.",
             "Admins sign in at the admin page, see upload stats on the dashboard, and create, edit, or delete users.",
