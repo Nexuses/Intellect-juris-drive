@@ -15,7 +15,7 @@ export default async function LoginPage() {
     <AuthCard
       title="Welcome back"
       subtitle="Sign in to continue to your workspace."
-      footer="Use the email and password provided for your workspace."
+      footer="Use the email and password provided for your workspace. We'll email you a login code."
     >
       <AuthForm action={login} submitLabel="Log In" pendingLabel="Logging in..." />
     </AuthCard>

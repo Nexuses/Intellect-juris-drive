@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/app/lib/dal";
 import { deleteAllForOwner } from "@/app/lib/drive";
+import { checkEmailCanReceive } from "@/app/lib/email-check";
 import { createUser, deleteRegularUser, updateUser } from "@/app/lib/users";
 import { readField, readUserFields, type FormState } from "@/app/lib/validation";
 
@@ -24,6 +25,8 @@ export async function addUser(
 
   const { name, email, password, fieldErrors } = readUserFields(formData);
   if (fieldErrors) return { fieldErrors, values: { name, email } };
+  const emailError = await checkEmailCanReceive(email);
+  if (emailError) return { fieldErrors: { email: emailError }, values: { name, email } };
 
   const result = await createUser({ name, email, password });
   if ("error" in result) {
@@ -48,6 +51,8 @@ export async function editUser(
     passwordOptional: true,
   });
   if (fieldErrors) return { fieldErrors, values: { name, email } };
+  const emailError = await checkEmailCanReceive(email);
+  if (emailError) return { fieldErrors: { email: emailError }, values: { name, email } };
 
   const result = await updateUser(id, { name, email, password: password || undefined });
   if ("error" in result) {

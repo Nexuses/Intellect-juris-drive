@@ -5,13 +5,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "assets.wefundco.com",
-        port: "",
-        pathname: "/**",
-        search: "",
-      },
-      {
-        protocol: "https",
         hostname: "assets.nexuses.xyz",
         port: "",
         pathname: "/**",

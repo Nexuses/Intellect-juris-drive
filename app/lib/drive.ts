@@ -2,6 +2,7 @@ import "server-only";
 import { ObjectId } from "mongodb";
 import { fileKind, type FileKind } from "./file-kind";
 import { removeIndexForFiles, removeIndexForOwner } from "./doc-index";
+import { removeCommentsForFiles, removeCommentsForOwner } from "./file-comments";
 import { getDb } from "./mongodb";
 import { deleteFiles, keyFromLink } from "./storage";
 
@@ -304,6 +305,7 @@ export async function deleteItem(ownerId: string, itemId: string) {
 
   await col.deleteMany({ _id: { $in: ids }, ownerId: owner });
   await removeIndexForFiles(ids);
+  await removeCommentsForFiles(ids);
   await deleteFiles(storageKeys);
   return {};
 }
@@ -598,6 +600,7 @@ export async function deleteAllForOwner(ownerId: string) {
     .toArray();
   await col.deleteMany({ ownerId: owner });
   await removeIndexForOwner(owner);
+  await removeCommentsForOwner(owner);
   await deleteFiles(files.flatMap((file) => {
     const key = objectKey(file);
     return key ? [key] : [];

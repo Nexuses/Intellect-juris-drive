@@ -154,6 +154,12 @@ export const CloseIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const CommentIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 14v-2.47l6.88-6.88c.2-.2.51-.2.71 0l1.77 1.77c.2.2.2.51 0 .71L8.47 14H6zm12 0h-7.5l2-2H18v2z" />
+  </Svg>
+);
+
 export const ErrorIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />

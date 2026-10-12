@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { deleteManagedFilesAction, renameManagedFileAction } from "@/app/actions/files";
 import {
+  CommentIcon,
   DownloadIcon,
   FileTypeIcon,
   LinkIcon,
@@ -21,13 +22,18 @@ import {
   officeViewerUrl,
   type FileKind,
 } from "@/app/lib/file-kind";
+import { FileComments } from "./file-comments";
 import { Modal } from "./modal";
 
 export type ReadingStatus = "ready" | "failed" | "unsupported" | "waiting";
-export type ManagedFileRow = ManagedFile & { ownerName?: string; reading: ReadingStatus };
+export type ManagedFileRow = ManagedFile & { ownerName?: string; reading: ReadingStatus; comments: number };
 
-type SortOrder = "newest" | "oldest" | "name" | "largest";
-type Dialog = { kind: "rename"; file: ManagedFileRow } | { kind: "delete"; files: ManagedFileRow[] } | null;
+type SortOrder = "newest" | "oldest" | "name" | "largest" | "comments";
+type Dialog =
+  | { kind: "rename"; file: ManagedFileRow }
+  | { kind: "delete"; files: ManagedFileRow[] }
+  | { kind: "comments"; file: ManagedFileRow }
+  | null;
 
 const PAGE_SIZE = 50;
 
@@ -117,6 +123,7 @@ export function FileManager({
       if (sort === "oldest") return a.uploadedAt.localeCompare(b.uploadedAt);
       if (sort === "name") return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
       if (sort === "largest") return (b.size ?? 0) - (a.size ?? 0);
+      if (sort === "comments") return b.comments - a.comments || b.uploadedAt.localeCompare(a.uploadedAt);
       return b.uploadedAt.localeCompare(a.uploadedAt);
     });
   }, [files, query, typeFilter, ownerFilter, sort]);
@@ -197,6 +204,19 @@ export function FileManager({
           }}
         >
           <OpenIcon className="h-[18px] w-[18px]" />
+        </IconButton>
+        <IconButton
+          label={file.comments > 0 ? `Comments (${file.comments})` : "Comments"}
+          onClick={() => setDialog({ kind: "comments", file })}
+        >
+          <span className="relative">
+            <CommentIcon className="h-[18px] w-[18px]" />
+            {file.comments > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-semibold leading-none text-cream">
+                {file.comments > 99 ? "99+" : file.comments}
+              </span>
+            )}
+          </span>
         </IconButton>
         <IconButton label="Download" onClick={() => download(file)}>
           <DownloadIcon className="h-[18px] w-[18px]" />
@@ -280,6 +300,7 @@ export function FileManager({
             <option value="oldest">Oldest first</option>
             <option value="name">Name A–Z</option>
             <option value="largest">Largest first</option>
+            <option value="comments">Most comments</option>
           </select>
         </div>
       </div>
@@ -449,6 +470,14 @@ export function FileManager({
           }}
         />
       )}
+      {dialog?.kind === "comments" && (
+        <CommentsDialog
+          file={dialog.file}
+          showOwner={showOwner}
+          onClose={() => setDialog(null)}
+          onChange={() => router.refresh()}
+        />
+      )}
       {dialog?.kind === "delete" && (
         <DeleteDialog
           files={dialog.files}
@@ -464,6 +493,30 @@ export function FileManager({
         />
       )}
     </div>
+  );
+}
+
+function CommentsDialog({
+  file,
+  showOwner,
+  onClose,
+  onChange,
+}: {
+  file: ManagedFileRow;
+  showOwner: boolean;
+  onClose: () => void;
+  onChange: () => void;
+}) {
+  return (
+    <Modal title={file.name} wide onClose={onClose}>
+      <p className="-mt-2 mb-4 truncate text-xs text-ink/55">
+        {showOwner && file.ownerName ? `${file.ownerName} · ` : ""}
+        {file.folder}
+      </p>
+      <div className="h-[min(560px,calc(100dvh-12rem))] overflow-hidden rounded-xl border border-sand">
+        <FileComments fileId={file.id} onChange={onChange} />
+      </div>
+    </Modal>
   );
 }
 

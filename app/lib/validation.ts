@@ -4,6 +4,8 @@ export type FormState =
       success?: string;
       fieldErrors?: { name?: string; email?: string; password?: string };
       values?: { name?: string; email?: string };
+      /** Set while the login form is waiting for the emailed code. */
+      otp?: { email: string };
     }
   | undefined;
 

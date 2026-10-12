@@ -66,6 +66,9 @@ export function AddUserForm() {
             className={inputClass}
           />
           <FieldError message={view?.fieldErrors?.email} />
+          {!view?.fieldErrors?.email && (
+            <p className="mt-1.5 text-xs text-ink/55">Use a real inbox. Login codes are sent here.</p>
+          )}
         </div>
 
         <div>

@@ -18,6 +18,7 @@ import {
 } from "@/app/actions/drive";
 import type { DriveItem } from "@/app/lib/drive";
 import { askJev } from "@/app/ui/chat-widget";
+import { openFileComments } from "@/app/ui/file-comments";
 import { ContextMenu, type MenuEntry } from "./context-menu";
 import { DeleteDialog, LinkDialog, NameDialog } from "./drive-dialogs";
 import { fileKind, isOfficeKind, officeViewerUrl } from "./file-kind";
@@ -26,6 +27,7 @@ import {
   ChatBubbleIcon,
   CheckIcon,
   CloseIcon,
+  CommentIcon,
   DownloadIcon,
   ErrorIcon,
   LinkIcon,
@@ -256,6 +258,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       { label: "Open", icon: <OpenIcon />, onSelect: () => openItem(item) },
       ...(item.type === "file"
         ? [
+            { label: "Comments", icon: <CommentIcon />, onSelect: () => openFileComments(item.id) },
             { label: "Download", icon: <DownloadIcon />, onSelect: () => downloadItem(item) },
             {
               label: "Get S3 link",

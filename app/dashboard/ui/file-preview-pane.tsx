@@ -13,7 +13,8 @@ import {
   officeViewerUrl,
   type FileKind,
 } from "./file-kind";
-import { CloseIcon, DownloadIcon, FileTypeIcon, MoreIcon, OpenIcon } from "./icons";
+import { FileComments } from "@/app/ui/file-comments";
+import { CloseIcon, CommentIcon, DownloadIcon, FileTypeIcon, MoreIcon, OpenIcon } from "./icons";
 
 const TEXT_KINDS: FileKind[] = ["text", "code", "csv"];
 const MAX_TEXT_CHARS = 200_000;
@@ -95,7 +96,14 @@ function PreviewBody({ item }: { item: DriveItem }) {
   return <NoPreview kind={kind} message="No preview is available for this file type. Download it to view." />;
 }
 
-export function FilePreviewPane({ item, onClose }: { item: DriveItem; onClose: () => void }) {
+type FilePreviewPaneProps = {
+  item: DriveItem;
+  commentsOpen: boolean;
+  onToggleComments: () => void;
+  onClose: () => void;
+};
+
+export function FilePreviewPane({ item, commentsOpen, onToggleComments, onClose }: FilePreviewPaneProps) {
   const { openItem, openItemMenu } = useDrive();
 
   const iconButton =
@@ -116,6 +124,16 @@ export function FilePreviewPane({ item, onClose }: { item: DriveItem; onClose: (
             {formatSize(item.size)} · {formatModified(item.updatedAt)}
           </p>
         </div>
+        <button
+          type="button"
+          aria-label={commentsOpen ? "Hide comments" : "Show comments"}
+          aria-pressed={commentsOpen}
+          title={commentsOpen ? "Hide comments" : "Comments"}
+          onClick={onToggleComments}
+          className={`${iconButton} ${commentsOpen ? "bg-sand text-ink" : ""}`}
+        >
+          <CommentIcon className="h-[18px] w-[18px]" />
+        </button>
         <button type="button" aria-label="Open in new tab" title="Open in new tab" onClick={() => openItem(item)} className={iconButton}>
           <OpenIcon className="h-[18px] w-[18px]" />
         </button>
@@ -145,7 +163,14 @@ export function FilePreviewPane({ item, onClose }: { item: DriveItem; onClose: (
         </button>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
-        <PreviewBody item={item} />
+        <div className={`min-h-0 min-w-0 flex-1 ${commentsOpen ? "hidden lg:flex" : "flex"}`}>
+          <PreviewBody item={item} />
+        </div>
+        {commentsOpen && (
+          <aside className="flex min-h-0 w-full shrink-0 flex-col border-sand lg:w-80 lg:border-l">
+            <FileComments key={item.id} fileId={item.id} />
+          </aside>
+        )}
       </div>
     </section>
   );

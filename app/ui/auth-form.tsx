@@ -26,6 +26,99 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-1.5 text-xs text-red-600">{message}</p>;
 }
 
+function CodeStep({
+  email,
+  state,
+  formAction,
+  pending,
+}: {
+  email: string;
+  state: FormState;
+  formAction: (formData: FormData) => void;
+  pending: boolean;
+}) {
+  const [intent, setIntent] = useState("verify");
+
+  return (
+    <form action={formAction} className="space-y-5">
+      <input type="hidden" name="otpEmail" value={email} />
+
+      {state?.error ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {state.error}
+        </div>
+      ) : (
+        state?.success && (
+          <div role="status" className="rounded-xl border border-sand bg-sand/50 px-4 py-3 text-sm text-ink">
+            {state.success}
+          </div>
+        )
+      )}
+
+      <div>
+        <label htmlFor="code" className="mb-2 block text-[15px] font-semibold text-ink">
+          Login code <span className="text-gold">*</span>
+        </label>
+        <input
+          key={state?.success}
+          id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="\d{6}"
+          maxLength={6}
+          placeholder="6-digit code"
+          autoFocus
+          required
+          onInput={(event) => {
+            event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "");
+          }}
+          className={`${inputClass} text-center text-xl tracking-[0.5em] placeholder:text-base placeholder:tracking-normal`}
+        />
+        <p className="mt-1.5 text-xs text-ink/55">Check the inbox of {email}. The code expires in 10 minutes.</p>
+      </div>
+
+      <div className="pt-2">
+        <button
+          type="submit"
+          name="intent"
+          value="verify"
+          disabled={pending}
+          onClick={() => setIntent("verify")}
+          className="h-12 w-full rounded-xl bg-ink px-4 text-[15px] font-semibold text-cream shadow-[0_10px_24px_-12px_rgba(41,45,48,0.7)] transition duration-200 hover:-translate-y-0.5 hover:bg-gold hover:shadow-[0_14px_28px_-12px_rgba(165,139,96,0.7)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-ink"
+        >
+          {pending && intent === "verify" ? "Checking code..." : "Verify and log in"}
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <button
+          type="submit"
+          name="intent"
+          value="resend"
+          formNoValidate
+          disabled={pending}
+          onClick={() => setIntent("resend")}
+          className="font-medium text-gold transition hover:text-ink disabled:opacity-60"
+        >
+          {pending && intent === "resend" ? "Sending..." : "Send a new code"}
+        </button>
+        <button
+          type="submit"
+          name="intent"
+          value="restart"
+          formNoValidate
+          disabled={pending}
+          onClick={() => setIntent("restart")}
+          className="text-ink/60 transition hover:text-ink disabled:opacity-60"
+        >
+          Use a different account
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function AuthForm({
   action,
   submitLabel,
@@ -34,6 +127,10 @@ export function AuthForm({
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [showPassword, setShowPassword] = useState(false);
+
+  if (state?.otp) {
+    return <CodeStep email={state.otp.email} state={state} formAction={formAction} pending={pending} />;
+  }
 
   return (
     <form action={formAction} className="space-y-5">

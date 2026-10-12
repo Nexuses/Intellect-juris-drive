@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import type { DriveItem } from "@/app/lib/drive";
+import { OPEN_COMMENTS_EVENT } from "@/app/ui/file-comments";
 import { Breadcrumbs, type BreadcrumbItem } from "./breadcrumbs";
 import { useDrive } from "./drive-provider";
 import { FilePreviewPane } from "./file-preview-pane";
@@ -59,7 +60,19 @@ export function DriveBrowser({
     useDrive();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    function onOpenComments(event: Event) {
+      const fileId = (event as CustomEvent<string>).detail;
+      setSelectedId(fileId);
+      setPreviewId(fileId);
+      setCommentsOpen(true);
+    }
+    window.addEventListener(OPEN_COMMENTS_EVENT, onOpenComments);
+    return () => window.removeEventListener(OPEN_COMMENTS_EVENT, onOpenComments);
+  }, []);
 
   const sorted = [...items].sort((a, b) => {
     const order = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
@@ -246,7 +259,12 @@ export function DriveBrowser({
               ))}
             </div>
           </div>
-          <FilePreviewPane item={previewItem} onClose={() => setPreviewId(null)} />
+          <FilePreviewPane
+            item={previewItem}
+            commentsOpen={commentsOpen}
+            onToggleComments={() => setCommentsOpen((open) => !open)}
+            onClose={() => setPreviewId(null)}
+          />
         </div>
       ) : view === "grid" ? (
         <div className="pb-6">
