@@ -60,6 +60,33 @@ type UploadStatus = "queued" | "uploading" | "done" | "error";
 type UploadEntry = { id: number; name: string; status: UploadStatus; error?: string };
 type UploadJob = { file: File; parentId: string | null };
 
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
+  if (!response.ok) throw new Error(data.error ?? "Upload failed.");
+  return data;
+}
+
+/** Sends the file straight to S3 with a signed URL, then records it in the drive. */
+async function uploadFile(file: File, parentId: string | null) {
+  const meta = { name: file.name, type: file.type, size: file.size, parentId };
+  const { key, uploadUrl, contentType } = await postJson<{ key: string; uploadUrl: string; contentType: string }>(
+    "/api/files/upload-url",
+    meta,
+  );
+
+  const stored = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: file }).catch(
+    () => null,
+  );
+  if (!stored?.ok) throw new Error("Upload failed. Check your connection and try again.");
+
+  await postJson("/api/files", { key, name: file.name, type: file.type, parentId });
+}
+
 type DriveApi = {
   view: ViewMode;
   setView: (view: ViewMode) => void;
@@ -149,16 +176,9 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     for (const [index, job] of jobs.entries()) {
       const { id } = queued[index];
       updateUpload(id, { status: "uploading" });
-      const body = new FormData();
-      body.set("file", job.file, job.file.name);
-      if (job.parentId) body.set("parentId", job.parentId);
 
       try {
-        const response = await fetch("/api/files", { method: "POST", body });
-        if (!response.ok) {
-          const data = (await response.json().catch(() => ({}))) as { error?: string };
-          throw new Error(data.error ?? "Upload failed.");
-        }
+        await uploadFile(job.file, job.parentId);
         updateUpload(id, { status: "done" });
       } catch (error) {
         updateUpload(id, {

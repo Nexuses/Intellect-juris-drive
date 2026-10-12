@@ -3,9 +3,11 @@ import { randomUUID } from "node:crypto";
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // File bytes live in S3. The database stores the link, not the file.
 
@@ -38,18 +40,30 @@ export function publicFileUrl(storageKey: string) {
   return `https://${bucket()}.s3.${required("AWS_REGION")}.amazonaws.com/${encodedKey}`;
 }
 
-export async function saveFile(file: File, ownerId: string) {
+const UPLOAD_URL_SECONDS = 15 * 60;
+
+/**
+ * A short-lived URL the browser can PUT the file to directly, so large files never pass
+ * through the app server (Vercel rejects request bodies over 4.5 MB).
+ */
+export async function createUploadUrl(ownerId: string, contentType: string, size: number) {
   const key = `${ownerId}/${randomUUID()}`;
-  await s3().send(
-    new PutObjectCommand({
-      Bucket: bucket(),
-      Key: key,
-      Body: Buffer.from(await file.arrayBuffer()),
-      ContentType: file.type || "application/octet-stream",
-      ContentLength: file.size,
-    }),
+  const uploadUrl = await getSignedUrl(
+    s3(),
+    new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType, ContentLength: size }),
+    { expiresIn: UPLOAD_URL_SECONDS },
   );
-  return { key, url: publicFileUrl(key) };
+  return { key, uploadUrl };
+}
+
+/** Size in bytes of an uploaded object, or null when it doesn't exist. */
+export async function storedFileSize(storageKey: string) {
+  try {
+    const result = await s3().send(new HeadObjectCommand({ Bucket: bucket(), Key: storageKey }));
+    return result.ContentLength ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Object key embedded in a virtual-hosted or path-style S3 URL. */

@@ -2,22 +2,24 @@ import { after } from "next/server";
 import { getCurrentUser } from "@/app/lib/dal";
 import { indexFile } from "@/app/lib/doc-index";
 import { addFile } from "@/app/lib/drive";
-import { deleteFiles, saveFile } from "@/app/lib/storage";
-
-const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+import { deleteFiles, publicFileUrl, storedFileSize } from "@/app/lib/storage";
+import { MAX_UPLOAD_BYTES, uploadContentType } from "@/app/lib/uploads";
 
 export const maxDuration = 300;
 
+type CompleteRequest = { key?: unknown; name?: unknown; type?: unknown; parentId?: unknown };
+
+/** Step 2 of an upload: the browser has PUT the file to S3; record it in the drive. */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Not signed in." }, { status: 401 });
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  const parentField = formData.get("parentId");
-  const parentId = typeof parentField === "string" && parentField ? parentField : null;
+  const body = (await request.json().catch(() => ({}))) as CompleteRequest;
+  const key = typeof body.key === "string" ? body.key : "";
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const parentId = typeof body.parentId === "string" ? body.parentId : "";
 
-  if (!(file instanceof File)) {
+  if (!key.startsWith(`${user.id}/`) || key.includes("..") || !name) {
     return Response.json({ error: "No file was provided." }, { status: 400 });
   }
   if (!parentId) {
@@ -26,20 +28,24 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
+
+  const size = await storedFileSize(key);
+  if (size === null) {
+    return Response.json({ error: "The upload didn't finish. Try again." }, { status: 400 });
+  }
+  if (size > MAX_UPLOAD_BYTES) {
+    await deleteFiles([key]);
     return Response.json({ error: "Files must be 100 MB or smaller." }, { status: 413 });
   }
 
-  const saved = await saveFile(file, user.id);
   const result = await addFile(user.id, parentId, {
-    name: file.name,
-    mimeType: file.type,
-    size: file.size,
-    s3Url: saved.url,
+    name,
+    mimeType: uploadContentType(body.type),
+    size,
+    s3Url: publicFileUrl(key),
   });
-
   if ("error" in result) {
-    await deleteFiles([saved.key]);
+    await deleteFiles([key]);
     return Response.json({ error: result.error }, { status: 400 });
   }
 
