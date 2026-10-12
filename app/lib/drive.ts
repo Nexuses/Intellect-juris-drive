@@ -469,6 +469,21 @@ export async function listManagedFiles(ownerId: string | null): Promise<ManagedF
     }));
 }
 
+export type FolderNode = { id: string; name: string; parentId: string | null; updatedAt: string };
+
+/** Every folder one user owns, sorted by name. */
+export async function listFolders(ownerId: string): Promise<FolderNode[]> {
+  const owner = toObjectId(ownerId);
+  if (!owner) return [];
+  const docs = await (await items()).find({ ownerId: owner, type: "folder" }).sort({ name: 1 }).toArray();
+  return docs.map((doc) => ({
+    id: doc._id.toHexString(),
+    name: doc.name,
+    parentId: doc.parentId?.toHexString() ?? null,
+    updatedAt: doc.updatedAt.toISOString(),
+  }));
+}
+
 export type FolderOption = { id: string; path: string };
 
 /** Every folder one user owns, with its full path, sorted by path. */
