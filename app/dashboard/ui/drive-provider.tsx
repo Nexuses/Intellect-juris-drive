@@ -20,7 +20,8 @@ import type { DriveItem } from "@/app/lib/drive";
 import { askJev } from "@/app/ui/chat-widget";
 import { ContextMenu, type MenuEntry } from "./context-menu";
 import { DeleteDialog, LinkDialog, NameDialog } from "./drive-dialogs";
-import { fileKind } from "./file-kind";
+import { fileKind, isOfficeKind, officeViewerUrl } from "./file-kind";
+import { OrganizeDialog, type OrganizeMode } from "./organize-dialog";
 import {
   ChatBubbleIcon,
   CheckIcon,
@@ -66,6 +67,8 @@ type DriveApi = {
   openItemMenu: (item: DriveItem, x: number, y: number) => void;
   openItem: (item: DriveItem) => void;
   uploadFiles: (files: File[]) => void;
+  /** Opens Jev's review screen for files sitting outside any folder. */
+  organizeLooseFiles: () => void;
 };
 
 const DriveContext = createContext<DriveApi | null>(null);
@@ -91,6 +94,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [organizer, setOrganizer] = useState<OrganizeMode | null>(null);
   const uploadPanelRef = useRef<HTMLDivElement>(null);
   const showUploads = uploads.length > 0;
 
@@ -166,6 +170,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
   function uploadFiles(files: File[]) {
     const parentId = currentFolderId;
+    if (files.length === 0) return;
+    if (!parentId) {
+      setOrganizer({ kind: "upload", files });
+      return;
+    }
     void runUploads(files.map((file) => ({ file, parentId })));
   }
 
@@ -193,8 +202,15 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   }
 
   function openItem(item: DriveItem) {
-    if (item.type === "folder") router.push(`/dashboard/folders/${item.id}`);
-    else window.open(`/api/files/${item.id}`, "_blank", "noopener");
+    if (item.type === "folder") {
+      router.push(`/dashboard/folders/${item.id}`);
+      return;
+    }
+    const url =
+      isOfficeKind(fileKind(item.mimeType, item.name)) && item.s3Url
+        ? officeViewerUrl(item.s3Url, "view")
+        : `/api/files/${item.id}`;
+    window.open(url, "_blank", "noopener");
   }
 
   function downloadItem(item: DriveItem) {
@@ -211,12 +227,28 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       onSelect: () => setDialog({ kind: "new-folder" }),
     },
     "divider",
-    { label: "File upload", icon: <FileUploadIcon />, onSelect: () => fileInputRef.current?.click() },
+    {
+      label: "File upload",
+      icon: <FileUploadIcon />,
+      onSelect: () => fileInputRef.current?.click(),
+      hint: currentFolderId ? undefined : "AI picks a folder for each file. You review before uploading.",
+    },
     {
       label: "Folder upload",
       icon: <FolderUploadIcon />,
       onSelect: () => folderInputRef.current?.click(),
     },
+    ...(currentFolderId
+      ? []
+      : [
+          "divider" as const,
+          {
+            label: "Organize with AI",
+            icon: <SparkIcon />,
+            onSelect: () => setOrganizer({ kind: "loose" }),
+            hint: "Move files that are outside any folder into the right folders.",
+          },
+        ]),
   ];
 
   function itemEntries(item: DriveItem): MenuEntry[] {
@@ -232,12 +264,12 @@ export function DriveProvider({ children }: { children: ReactNode }) {
             },
             "divider" as const,
             {
-              label: "Summarize with Jev",
+              label: "Summarize with AI",
               icon: <SparkIcon />,
               onSelect: () => askJev(`Summarize "${item.name}"`, true),
             },
             {
-              label: "Ask Jev about this file",
+              label: "Ask AI about this file",
               icon: <ChatBubbleIcon />,
               onSelect: () => askJev(`In "${item.name}", `, false),
             },
@@ -263,6 +295,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     openItemMenu: (item, x, y) => setMenu({ kind: "item", x, y, item }),
     openItem,
     uploadFiles,
+    organizeLooseFiles: () => setOrganizer({ kind: "loose" }),
   };
 
   const finished = uploads.filter((entry) => entry.status === "done").length;
@@ -332,6 +365,18 @@ export function DriveProvider({ children }: { children: ReactNode }) {
             const { error } = await deleteItemAction(dialog.item.id);
             if (!error) setNotice(`"${dialog.item.name}" was deleted.`);
             return error;
+          }}
+        />
+      )}
+
+      {organizer && (
+        <OrganizeDialog
+          mode={organizer}
+          onClose={() => setOrganizer(null)}
+          onUpload={(jobs) => void runUploads(jobs)}
+          onDone={(message) => {
+            setNotice(message);
+            router.refresh();
           }}
         />
       )}

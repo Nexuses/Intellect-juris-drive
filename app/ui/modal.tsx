@@ -7,11 +7,13 @@ export function Modal({
   description,
   onClose,
   children,
+  wide = false,
 }: {
   title: string;
   description?: string;
   onClose: () => void;
   children: ReactNode;
+  wide?: boolean;
 }) {
   const titleId = useId();
 
@@ -32,7 +34,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 text-left sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.18)]"
+        className={`max-h-[calc(100dvh-2rem)] w-full ${wide ? "max-w-2xl" : "max-w-md"} overflow-y-auto rounded-2xl bg-white p-5 text-left sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.18)]`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-semibold text-ink">

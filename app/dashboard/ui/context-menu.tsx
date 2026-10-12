@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export type MenuEntry =
-  | { label: string; icon: ReactNode; onSelect: () => void; danger?: boolean }
+  | { label: string; icon: ReactNode; onSelect: () => void; danger?: boolean; disabled?: boolean; hint?: string }
   | "divider";
 
 export function ContextMenu({
@@ -69,16 +69,27 @@ export function ContextMenu({
             key={entry.label}
             type="button"
             role="menuitem"
+            disabled={entry.disabled}
+            aria-disabled={entry.disabled}
             onClick={() => {
               onClose();
               entry.onSelect();
             }}
-            className={`flex h-9 w-full items-center gap-4 px-4 text-left text-sm transition hover:bg-sand ${
+            className={`flex w-full items-center gap-4 px-4 text-left text-sm transition ${
+              entry.hint ? "py-2" : "h-9"
+            } ${entry.disabled ? "cursor-not-allowed" : "hover:bg-sand"} ${
               entry.danger ? "text-[#8c3a32]" : "text-ink"
             }`}
           >
-            <span className={entry.danger ? "text-[#8c3a32]" : "text-gold"}>{entry.icon}</span>
-            {entry.label}
+            <span
+              className={`${entry.danger ? "text-[#8c3a32]" : "text-gold"} ${entry.disabled ? "opacity-40" : ""}`}
+            >
+              {entry.icon}
+            </span>
+            <span className="min-w-0">
+              <span className={`block ${entry.disabled ? "opacity-40" : ""}`}>{entry.label}</span>
+              {entry.hint && <span className="mt-0.5 block max-w-[220px] text-xs text-ink/55">{entry.hint}</span>}
+            </span>
           </button>
         ),
       )}

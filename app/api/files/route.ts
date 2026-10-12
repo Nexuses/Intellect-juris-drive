@@ -20,6 +20,12 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return Response.json({ error: "No file was provided." }, { status: 400 });
   }
+  if (!parentId) {
+    return Response.json(
+      { error: "Files must be uploaded inside a folder. Create or open a folder first." },
+      { status: 400 },
+    );
+  }
   if (file.size > MAX_UPLOAD_BYTES) {
     return Response.json({ error: "Files must be 100 MB or smaller." }, { status: 413 });
   }

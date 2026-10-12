@@ -29,6 +29,7 @@ export type DriveItem = {
   mimeType: string | null;
   size: number | null;
   updatedAt: string;
+  s3Url: string | null;
 };
 
 export type Crumb = { id: string; name: string };
@@ -60,6 +61,7 @@ function toDriveItem(doc: ItemDoc): DriveItem {
     mimeType: doc.mimeType ?? null,
     size: doc.size ?? null,
     updatedAt: doc.updatedAt.toISOString(),
+    s3Url: doc.s3Url ?? null,
   };
 }
 
@@ -203,9 +205,10 @@ export async function createFolderTree(
   };
 }
 
+/** Saves an uploaded file. Files always live inside a folder, never at the drive root. */
 export async function addFile(
   ownerId: string,
-  parentId: string | null,
+  parentId: string,
   file: { name: string; mimeType: string; size: number; s3Url: string },
 ) {
   const owner = toObjectId(ownerId);
@@ -213,7 +216,7 @@ export async function addFile(
   if (!owner || !name || !file.s3Url) return { error: "Invalid file name." };
 
   const parent = await resolveParent(owner, parentId);
-  if (!parent.ok) return { error: "The destination folder no longer exists." };
+  if (!parent.ok || !parent.id) return { error: "The destination folder no longer exists." };
 
   const now = new Date();
   const doc: ItemDoc = {
@@ -462,6 +465,76 @@ export async function listManagedFiles(ownerId: string | null): Promise<ManagedF
       uploadedAt: doc.createdAt.toISOString(),
       updatedAt: doc.updatedAt.toISOString(),
     }));
+}
+
+export type FolderOption = { id: string; path: string };
+
+/** Every folder one user owns, with its full path, sorted by path. */
+export async function listFolderOptions(ownerId: string): Promise<FolderOption[]> {
+  const owner = toObjectId(ownerId);
+  if (!owner) return [];
+  const docs = await (await items()).find({ ownerId: owner, type: "folder" }).toArray();
+  const folderPath = folderPathResolver(docs);
+  return docs
+    .map((doc) => {
+      const parent = folderPath(doc.parentId);
+      return { id: doc._id.toHexString(), path: parent === "Drive" ? doc.name : `${parent} / ${doc.name}` };
+    })
+    .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: "base" }));
+}
+
+/** Top-level folders by name, created when missing. Returns name -> folder id. */
+export async function ensureTopLevelFolders(ownerId: string, names: string[]) {
+  const owner = toObjectId(ownerId);
+  const ids = new Map<string, string>();
+  if (!owner) return ids;
+
+  const col = await items();
+  for (const raw of new Set(names)) {
+    const name = cleanName(raw);
+    if (!name) continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const existing = await col.findOne({
+      ownerId: owner,
+      parentId: null,
+      type: "folder",
+      name: { $regex: `^${escaped}$`, $options: "i" },
+    });
+    if (existing) {
+      ids.set(raw, existing._id.toHexString());
+      continue;
+    }
+    const created = await createFolder(ownerId, null, name);
+    if ("item" in created && created.item) ids.set(raw, created.item.id);
+  }
+  return ids;
+}
+
+/** Moves one of the user's files into one of their folders. */
+export async function moveFile(ownerId: string, fileId: string, folderId: string) {
+  const owner = toObjectId(ownerId);
+  const id = toObjectId(fileId);
+  if (!owner || !id) return { error: "This file no longer exists." };
+
+  const parent = await resolveParent(owner, folderId);
+  if (!parent.ok || !parent.id) return { error: "The destination folder no longer exists." };
+
+  const result = await (await items()).updateOne(
+    { _id: id, ownerId: owner, type: "file" },
+    { $set: { parentId: parent.id, updatedAt: new Date() } },
+  );
+  return result.matchedCount === 1 ? {} : { error: "This file no longer exists." };
+}
+
+/** Files sitting at the top of a user's drive, outside any folder. */
+export async function listLooseFiles(ownerId: string) {
+  const owner = toObjectId(ownerId);
+  if (!owner) return [];
+  const docs = await (await items())
+    .find({ ownerId: owner, parentId: null, type: "file" })
+    .sort({ name: 1 })
+    .toArray();
+  return docs.map(toDriveItem);
 }
 
 /** Looks up a file without an owner check. Only for admin screens. */

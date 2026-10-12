@@ -273,7 +273,13 @@ function answerGuide(text: string) {
   if (/\blink\b|\bs3\b/.test(lower)) {
     return "Right-click a file and choose Get S3 link. That address does not expire. Anyone who has the link can open the file.";
   }
-  return "Choose New to create a folder, upload a file, or upload a folder. Right-click an item to open it, download it, copy its S3 link, rename it, or delete it. Search from the bar at the top.";
+  if (/\bupload\b/.test(lower)) {
+    return "Files are always kept inside a folder. Open a folder and choose New, then File upload, or drag files into it. If you upload or drop files on My Drive itself, the AI picks a folder for each file by its name and type, and you review the choices before anything uploads. Folder upload works from anywhere.";
+  }
+  if (/\b(organi[sz]e|sort|tidy|clean up)\b/.test(lower)) {
+    return "Choose New, then Organize with AI, on My Drive, or use the Organize with AI button in File Management. The AI picks a folder for each file that is outside a folder, and you review the moves before they happen.";
+  }
+  return "Create a folder with New, then New folder. Open it to upload files inside it, or use Folder upload. Right-click an item to open it, download it, copy its S3 link, rename it, or delete it. Search from the bar at the top.";
 }
 
 function answerDelete(text: string, files: StoredFileLink[], folders: StoredFolder[]) {

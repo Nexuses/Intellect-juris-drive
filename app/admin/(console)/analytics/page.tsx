@@ -118,9 +118,9 @@ export default async function AdminAnalyticsPage() {
       <div className="mt-8 rounded-2xl border border-sand">
         <div className="flex flex-col items-start gap-3 border-b border-sand px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
           <div>
-            <h2 className="text-base font-medium">Jev document reading</h2>
+            <h2 className="text-base font-medium">AI document reading</h2>
             <p className="mt-0.5 text-xs text-ink/60">
-              Jev reads each upload so people can search, summarize, compare, and ask about what
+              The AI reads each upload so people can search, summarize, compare, and ask about what
               files say. Video and old .doc, .xls, and .ppt files are not supported.
             </p>
           </div>

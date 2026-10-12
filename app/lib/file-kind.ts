@@ -13,6 +13,29 @@ export type FileKind =
   | "file";
 
 const EXTENSION_KINDS: Record<string, FileKind> = {
+  png: "image",
+  jpg: "image",
+  jpeg: "image",
+  gif: "image",
+  webp: "image",
+  avif: "image",
+  bmp: "image",
+  svg: "image",
+  heic: "image",
+  tif: "image",
+  tiff: "image",
+  pdf: "pdf",
+  mp4: "video",
+  mov: "video",
+  webm: "video",
+  mkv: "video",
+  avi: "video",
+  mp3: "audio",
+  wav: "audio",
+  m4a: "audio",
+  aac: "audio",
+  ogg: "audio",
+  flac: "audio",
   csv: "csv",
   xls: "sheet",
   xlsx: "sheet",
@@ -52,6 +75,19 @@ export function fileKind(mimeType: string | null, name: string): FileKind {
   if (mime.startsWith("audio/")) return "audio";
   if (mime.startsWith("text/")) return "text";
   return "file";
+}
+
+export function isHtmlFile(mimeType: string | null, name: string) {
+  return mimeType === "text/html" || /\.html?$/i.test(name);
+}
+
+/** Microsoft's online viewer; it needs a publicly readable link. */
+export function officeViewerUrl(s3Url: string, page: "embed" | "view" = "embed") {
+  return `https://view.officeapps.live.com/op/${page}.aspx?src=${encodeURIComponent(s3Url)}`;
+}
+
+export function isOfficeKind(kind: FileKind) {
+  return kind === "doc" || kind === "sheet" || kind === "slides";
 }
 
 const PREVIEWABLE_IMAGES = /^image\/(png|jpe?g|gif|webp|avif|bmp)$/;

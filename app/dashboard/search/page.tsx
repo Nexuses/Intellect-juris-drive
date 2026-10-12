@@ -20,7 +20,7 @@ async function ContentMatches({ ownerId, query }: { ownerId: string; query: stri
   return (
     <section className="mb-2 border-b border-sand px-3 pb-5 pt-3">
       <h2 className="text-sm font-medium text-ink">Found inside documents</h2>
-      <p className="mt-0.5 text-xs text-ink/60">Jev matched what these files say, not only their names.</p>
+      <p className="mt-0.5 text-xs text-ink/60">AI matched what these files say, not only their names.</p>
       <ul className="mt-3 flex flex-col gap-2">
         {results.map((result) => {
           const where = result.page ? `Page ${result.page}` : result.section;
@@ -61,7 +61,7 @@ export default async function SearchPage({
       {query && (
         <Suspense
           key={query}
-          fallback={<p className="px-3 pt-4 text-sm text-ink/50">Jev is searching inside your documents...</p>}
+          fallback={<p className="px-3 pt-4 text-sm text-ink/50">AI is searching inside your documents...</p>}
         >
           <ContentMatches ownerId={user.id} query={query} />
         </Suspense>

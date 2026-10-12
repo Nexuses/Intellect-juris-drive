@@ -4,6 +4,7 @@ import { useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "r
 import type { DriveItem } from "@/app/lib/drive";
 import { Breadcrumbs, type BreadcrumbItem } from "./breadcrumbs";
 import { useDrive } from "./drive-provider";
+import { FilePreviewPane } from "./file-preview-pane";
 import { fileKind, formatModified, formatSize, hasImagePreview } from "./file-kind";
 import {
   ArrowDownIcon,
@@ -57,6 +58,7 @@ export function DriveBrowser({
   const { view, setView, sort, toggleSort, openNewMenu, openItemMenu, openItem, uploadFiles } =
     useDrive();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
   const sorted = [...items].sort((a, b) => {
@@ -65,6 +67,18 @@ export function DriveBrowser({
   });
   const folders = sorted.filter((item) => item.type === "folder");
   const files = sorted.filter((item) => item.type === "file");
+  const previewItem = files.find((item) => item.id === previewId) ?? null;
+
+  function showPreview(item: DriveItem) {
+    setSelectedId(item.id);
+    setPreviewId(item.id);
+  }
+
+  function stepPreview(offset: number) {
+    if (!previewItem) return;
+    const next = files[files.indexOf(previewItem) + offset];
+    if (next) showPreview(next);
+  }
 
   function itemHandlers(item: DriveItem) {
     return {
@@ -73,12 +87,20 @@ export function DriveBrowser({
       "aria-label": item.name,
       onClick: (event: MouseEvent) => {
         event.stopPropagation();
+        if (item.type === "file") {
+          showPreview(item);
+          return;
+        }
         setSelectedId(item.id);
-        if ((event.nativeEvent as PointerEvent).pointerType === "touch") openItem(item);
+        if (previewItem || (event.nativeEvent as PointerEvent).pointerType === "touch") openItem(item);
       },
       onDoubleClick: () => openItem(item),
       onKeyDown: (event: KeyboardEvent) => {
         if (event.key === "Enter") openItem(item);
+        if (previewItem && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+          event.preventDefault();
+          stepPreview(event.key === "ArrowDown" ? 1 : -1);
+        }
       },
       onContextMenu: (event: MouseEvent) => {
         event.preventDefault();
@@ -146,7 +168,7 @@ export function DriveBrowser({
 
   return (
     <div
-      className={`flex min-h-full flex-col rounded-2xl transition ${dragging ? "bg-sand/60 ring-2 ring-gold" : ""}`}
+      className={`flex flex-col rounded-2xl transition ${previewItem ? "h-full" : "min-h-full"} ${dragging ? "bg-sand/60 ring-2 ring-gold" : ""}`}
       onClick={() => setSelectedId(null)}
       onContextMenu={(event) => {
         if (!allowCreate) return;
@@ -177,6 +199,7 @@ export function DriveBrowser({
               onClick={(event) => {
                 event.stopPropagation();
                 setView(mode);
+                setPreviewId(null);
               }}
               className={`inline-flex h-8 items-center gap-1 px-3 transition sm:px-4 ${
                 view === mode ? "bg-sand text-ink" : "text-ink/60 hover:bg-cream hover:text-ink"
@@ -196,6 +219,34 @@ export function DriveBrowser({
           </div>
           <p className="px-4 text-xl text-ink sm:text-[22px]">{emptyTitle}</p>
           {emptyHint && <p className="mt-2 px-4 text-sm text-ink/60">{emptyHint}</p>}
+        </div>
+      ) : previewItem ? (
+        <div className="grid min-h-0 flex-1 gap-4 pb-2 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+          <div className="hidden min-h-0 flex-col lg:flex">
+            <div className="shrink-0 border-b border-sand px-1 py-2">{sortButton}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {[...folders, ...files].map((item) => (
+                <div
+                  key={item.id}
+                  {...itemHandlers(item)}
+                  className={`flex h-14 cursor-default select-none items-center gap-3 rounded-lg pl-3 pr-1 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold ${
+                    previewItem.id === item.id ? "bg-sand" : "hover:bg-cream"
+                  }`}
+                >
+                  <ItemIcon item={item} className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-ink">{item.name}</p>
+                    <p className="truncate text-xs text-ink/55" suppressHydrationWarning>
+                      {formatModified(item.updatedAt)}
+                      {item.type === "file" ? ` · ${formatSize(item.size)}` : ""}
+                    </p>
+                  </div>
+                  {moreButton(item)}
+                </div>
+              ))}
+            </div>
+          </div>
+          <FilePreviewPane item={previewItem} onClose={() => setPreviewId(null)} />
         </div>
       ) : view === "grid" ? (
         <div className="pb-6">

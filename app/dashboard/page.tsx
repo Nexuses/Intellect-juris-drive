@@ -14,7 +14,7 @@ export default async function MyDrivePage() {
       items={items}
       crumbs={[{ id: null, name: "My Drive" }]}
       emptyTitle="Drop files here"
-      emptyHint='or use the "New" button to create folders and upload files'
+      emptyHint="Files are kept inside folders. AI suggests a folder for each file, or create your own with New."
     />
   );
 }

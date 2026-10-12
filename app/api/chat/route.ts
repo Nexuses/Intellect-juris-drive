@@ -199,7 +199,7 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("Jev document answer failed", error);
-    return Response.json({ error: "Jev could not read the documents just now. Try again." }, { status: 502 });
+    return Response.json({ error: "The AI could not read the documents just now. Try again." }, { status: 502 });
   }
 
   const topic = await jevTopic(key, latest);
@@ -216,12 +216,12 @@ export async function POST(request: Request) {
         {
           role: "system",
           content: [
-            "You are Jev, the assistant inside Intellect Juris, a private document drive for a law office.",
+            "You are the AI assistant inside Intellect Juris, a private document drive for a law office. If asked your name, say you are the Intellect Juris AI assistant.",
             `You are talking to ${user.name}, who is ${user.role === "admin" ? "an admin" : "a user"}.`,
             topic ? `A classifier labeled this message as: ${topic}. Use that only as a hint.` : "",
             records ? `Stored file records:\n${records}` : "",
             "Users sign in on the user login page and get a private drive. They can create folders, upload files, upload a folder from their computer, search, rename, and delete.",
-            "Jev also reads uploaded documents. People can ask it to find a document by what it says, summarize a file, compare files by name, or answer questions with the source file and page.",
+            "The AI also reads uploaded documents. People can ask it to find a document by what it says, summarize a file, compare files by name, or answer questions with the source file and page.",
             "A folder is stored in the database. A file is stored in S3, and the database stores that file's permanent S3 link and the folder it belongs to.",
             "Get S3 link copies a public address that does not expire. Anyone with that link can open the file.",
             "Admins sign in at the admin page, see upload stats on the dashboard, and create, edit, or delete users.",
@@ -240,12 +240,12 @@ export async function POST(request: Request) {
   });
 
   if (!response.ok) {
-    return Response.json({ error: "Jev could not answer just now. Try again." }, { status: 502 });
+    return Response.json({ error: "The AI could not answer just now. Try again." }, { status: 502 });
   }
 
   const reply = replyText(await response.json());
   if (!reply) {
-    return Response.json({ error: "Jev returned an empty reply. Try again." }, { status: 502 });
+    return Response.json({ error: "The AI returned an empty reply. Try again." }, { status: 502 });
   }
 
   return Response.json({ reply });

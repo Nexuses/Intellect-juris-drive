@@ -63,11 +63,18 @@ type ChoiceQuestion = {
   criteria: Record<string, string>;
 };
 
+export type JevAnswer = {
+  probability?: number;
+  choice?: string;
+  probabilities?: Record<string, number>;
+  confidence?: number;
+};
+
 /** Asks Jev typed questions about `state`. Returns null when Jev cannot be reached. */
 export async function askJev(
   state: unknown,
   questions: Record<string, BooleanQuestion | ChoiceQuestion>,
-): Promise<Record<string, { probability?: number; choice?: string }> | null> {
+): Promise<Record<string, JevAnswer> | null> {
   try {
     const response = await fetch(`${GATEWAY}/evaluate`, {
       method: "POST",
@@ -82,7 +89,7 @@ export async function askJev(
     if (!data || typeof data !== "object" || !("answers" in data)) return null;
     const answers = (data as { answers: unknown }).answers;
     return answers && typeof answers === "object"
-      ? (answers as Record<string, { probability?: number; choice?: string }>)
+      ? (answers as Record<string, JevAnswer>)
       : null;
   } catch {
     return null;

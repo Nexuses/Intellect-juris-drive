@@ -52,12 +52,12 @@ export function ChatWidget({
       });
       const data: { reply?: string; error?: string } = await response.json();
       if (!response.ok || !data.reply) {
-        setError(data.error ?? "Couldn't reach Jev.");
+        setError(data.error ?? "Couldn't reach the AI.");
         return;
       }
       setMessages([...next, { role: "assistant", content: data.reply }]);
     } catch {
-      setError("Couldn't reach Jev.");
+      setError("Couldn't reach the AI.");
     } finally {
       setPending(false);
     }
@@ -98,7 +98,7 @@ export function ChatWidget({
     <div className="fixed bottom-[calc(1rem+var(--upload-panel-offset,0px))] right-4 z-50 flex flex-col items-end transition-[bottom] duration-200 sm:bottom-[calc(1.25rem+var(--upload-panel-offset,0px))] sm:right-5">
       {open && (
         <section
-          aria-label="Jev chat"
+          aria-label="AI chat"
           className="mb-3 flex h-[min(32rem,calc(100dvh-6.5rem-var(--upload-panel-offset,0px)))] w-[calc(100vw-2rem)] flex-col sm:w-[min(24rem,calc(100vw-2.5rem))] lg:h-[min(32rem,calc(100vh-7rem-var(--upload-panel-offset,0px)))] overflow-hidden rounded-2xl border border-sand bg-white shadow-[0_12px_40px_rgba(41,45,48,0.16)]"
         >
           <header className="flex items-center gap-3 border-b border-sand px-4 py-3">
@@ -106,7 +106,7 @@ export function ChatWidget({
               <ChatIcon className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-ink">Jev</p>
+              <p className="text-sm font-semibold text-ink">AI</p>
               <p className="text-xs text-ink/60">Ask about your drive and documents</p>
             </div>
           </header>
@@ -132,7 +132,7 @@ export function ChatWidget({
                 <MessageText text={message.content} invert={message.role === "user"} />
               </p>
             ))}
-            {pending && <p className="text-sm text-ink/50">Jev is writing...</p>}
+            {pending && <p className="text-sm text-ink/50">AI is writing...</p>}
             {error && <p className="text-sm text-[#8c3a32]">{error}</p>}
           </div>
 
@@ -141,8 +141,8 @@ export function ChatWidget({
               ref={inputRef}
               value={draft}
               rows={2}
-              placeholder="Message Jev"
-              aria-label="Message Jev"
+              placeholder="Message AI"
+              aria-label="Message AI"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={onKeyDown}
               className="max-h-28 min-h-11 flex-1 resize-none rounded-xl border border-sand bg-cream px-3 py-2 text-base text-ink outline-none sm:text-sm placeholder:text-ink/40 focus:border-gold"

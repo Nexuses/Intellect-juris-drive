@@ -14,7 +14,13 @@ import {
   TrashIcon,
 } from "@/app/dashboard/ui/icons";
 import type { ManagedFile } from "@/app/lib/drive";
-import { formatModified, formatSize, type FileKind } from "@/app/lib/file-kind";
+import {
+  formatModified,
+  formatSize,
+  isOfficeKind,
+  officeViewerUrl,
+  type FileKind,
+} from "@/app/lib/file-kind";
 import { Modal } from "./modal";
 
 export type ReadingStatus = "ready" | "failed" | "unsupported" | "waiting";
@@ -180,7 +186,16 @@ export function FileManager({
   function actions(file: ManagedFileRow) {
     return (
       <>
-        <IconButton label="Open" onClick={() => window.open(`/api/files/${file.id}`, "_blank", "noopener")}>
+        <IconButton
+          label="Open"
+          onClick={() => {
+            const url =
+              isOfficeKind(file.kind) && file.s3Url
+                ? officeViewerUrl(file.s3Url, "view")
+                : `/api/files/${file.id}`;
+            window.open(url, "_blank", "noopener");
+          }}
+        >
           <OpenIcon className="h-[18px] w-[18px]" />
         </IconButton>
         <IconButton label="Download" onClick={() => download(file)}>
@@ -363,7 +378,7 @@ export function FileManager({
                     {showOwner && <th className="px-3 py-3 font-medium">Owner</th>}
                     <th className="px-3 py-3 font-medium">Size</th>
                     <th className="px-3 py-3 font-medium">Uploaded</th>
-                    <th className="px-3 py-3 font-medium">Jev</th>
+                    <th className="px-3 py-3 font-medium">AI</th>
                     <th className="px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
