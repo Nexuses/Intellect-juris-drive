@@ -1,5 +1,5 @@
 export const inputClass =
-  "h-10 w-full rounded-lg border border-sand bg-white px-3 text-sm text-ink outline-none transition duration-200 placeholder:text-ink/35 hover:border-gold/70 focus:border-gold focus:ring-[3px] focus:ring-gold/15";
+  "h-10 w-full rounded-lg border border-sand bg-white px-3 text-base text-ink outline-none sm:text-sm transition duration-200 placeholder:text-ink/35 hover:border-gold/70 focus:border-gold focus:ring-[3px] focus:ring-gold/15";
 
 export const labelClass = "mb-1.5 block text-[13px] font-medium text-ink";
 

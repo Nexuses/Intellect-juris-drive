@@ -402,20 +402,12 @@ export type StoredFolder = {
   path: string;
 };
 
-/** Files and folders for one user, or every user when `ownerId` is null. Folder paths come from the database. */
-export async function getDriveSnapshot(ownerId: string | null): Promise<{
-  files: StoredFileLink[];
-  folders: StoredFolder[];
-}> {
-  const owner = ownerId === null ? null : toObjectId(ownerId);
-  if (ownerId !== null && !owner) return { files: [], folders: [] };
-
-  const docs = await (await items()).find(owner ? { ownerId: owner } : {}).toArray();
+/** Builds "Parent / Child" folder paths from a set of drive documents. */
+function folderPathResolver(docs: ItemDoc[]) {
   const folderDocs = new Map(
     docs.filter((doc) => doc.type === "folder").map((doc) => [doc._id.toHexString(), doc]),
   );
-
-  function folderPath(parentId: ObjectId | null) {
+  return (parentId: ObjectId | null) => {
     const names: string[] = [];
     let current = parentId;
     const seen = new Set<string>();
@@ -429,7 +421,66 @@ export async function getDriveSnapshot(ownerId: string | null): Promise<{
       current = folder.parentId;
     }
     return names.length > 0 ? names.join(" / ") : "Drive";
-  }
+  };
+}
+
+export type ManagedFile = {
+  id: string;
+  ownerId: string;
+  name: string;
+  folder: string;
+  folderId: string | null;
+  mimeType: string | null;
+  size: number | null;
+  kind: FileKind;
+  s3Url: string | null;
+  uploadedAt: string;
+  updatedAt: string;
+};
+
+/** Every file for one user, or for all users when `ownerId` is null, newest first. */
+export async function listManagedFiles(ownerId: string | null): Promise<ManagedFile[]> {
+  const owner = ownerId === null ? null : toObjectId(ownerId);
+  if (ownerId !== null && !owner) return [];
+
+  const docs = await (await items()).find(owner ? { ownerId: owner } : {}).toArray();
+  const folderPath = folderPathResolver(docs);
+
+  return docs
+    .filter((doc) => doc.type === "file")
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .map((doc) => ({
+      id: doc._id.toHexString(),
+      ownerId: doc.ownerId.toHexString(),
+      name: doc.name,
+      folder: folderPath(doc.parentId),
+      folderId: doc.parentId?.toHexString() ?? null,
+      mimeType: doc.mimeType ?? null,
+      size: doc.size ?? null,
+      kind: fileKind(doc.mimeType ?? null, doc.name),
+      s3Url: doc.s3Url ?? null,
+      uploadedAt: doc.createdAt.toISOString(),
+      updatedAt: doc.updatedAt.toISOString(),
+    }));
+}
+
+/** Looks up a file without an owner check. Only for admin screens. */
+export async function getFileById(fileId: string) {
+  const id = toObjectId(fileId);
+  if (!id) return null;
+  return (await items()).findOne({ _id: id, type: "file" });
+}
+
+/** Files and folders for one user, or every user when `ownerId` is null. Folder paths come from the database. */
+export async function getDriveSnapshot(ownerId: string | null): Promise<{
+  files: StoredFileLink[];
+  folders: StoredFolder[];
+}> {
+  const owner = ownerId === null ? null : toObjectId(ownerId);
+  if (ownerId !== null && !owner) return { files: [], folders: [] };
+
+  const docs = await (await items()).find(owner ? { ownerId: owner } : {}).toArray();
+  const folderPath = folderPathResolver(docs);
 
   const byName = (a: { name: string }, b: { name: string }) =>
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });

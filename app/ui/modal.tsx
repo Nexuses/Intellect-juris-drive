@@ -32,7 +32,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-2xl bg-white p-6 text-left shadow-[0_8px_30px_rgba(0,0,0,0.18)]"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 text-left sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.18)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-semibold text-ink">

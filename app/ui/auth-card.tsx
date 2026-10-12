@@ -21,9 +21,9 @@ export function AuthCard({
       <section className="flex w-full flex-col px-6 py-10 sm:px-12 lg:w-1/2 xl:px-20">
         <div className="flex flex-1 items-center">
           <div className="mx-auto w-full max-w-[420px]">
-            <Logo priority className="mb-10 h-auto w-[120px]" />
-            <h1 className="text-[30px] font-semibold leading-tight tracking-tight">{title}</h1>
-            {subtitle && <p className="mt-2 text-[15px] text-ink/60">{subtitle}</p>}
+            <Logo priority className="mx-auto mb-10 block h-auto w-[120px] lg:mx-0 lg:inline" />
+            <h1 className="text-center text-[30px] font-semibold leading-tight tracking-tight lg:text-left">{title}</h1>
+            {subtitle && <p className="mt-2 text-center text-[15px] text-ink/60 lg:text-left">{subtitle}</p>}
             <div className="mt-8">{children}</div>
           </div>
         </div>

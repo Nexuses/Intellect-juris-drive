@@ -91,6 +91,25 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const uploadPanelRef = useRef<HTMLDivElement>(null);
+  const showUploads = uploads.length > 0;
+
+  useEffect(() => {
+    const panel = uploadPanelRef.current;
+    const root = document.documentElement;
+    if (!showUploads || !panel) {
+      root.style.removeProperty("--upload-panel-offset");
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      root.style.setProperty("--upload-panel-offset", `${panel.offsetHeight + 12}px`);
+    });
+    observer.observe(panel);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--upload-panel-offset");
+    };
+  }, [showUploads]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -318,7 +337,9 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       )}
 
       {uploads.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-40 w-[360px] overflow-hidden rounded-2xl bg-white shadow-[0_4px_8px_3px_rgba(60,64,67,0.15),0_1px_3px_rgba(60,64,67,0.3)]">
+        <div
+          ref={uploadPanelRef}
+          className="fixed bottom-4 right-4 z-40 w-[calc(100vw-2rem)] overflow-hidden sm:w-[360px] rounded-2xl bg-white shadow-[0_4px_8px_3px_rgba(60,64,67,0.15),0_1px_3px_rgba(60,64,67,0.3)]">
           <div className="flex items-center justify-between bg-sand py-3 pl-5 pr-2">
             <p className="text-sm font-medium text-ink">
               {active > 0
@@ -361,7 +382,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       {notice && (
         <div
           role="status"
-          className="fixed bottom-4 left-4 z-40 rounded-lg bg-ink px-4 py-3 text-sm text-cream shadow-lg"
+          className="fixed bottom-4 left-4 z-40 max-w-[calc(100vw-6.5rem)] rounded-lg bg-ink px-4 py-3 text-sm text-cream shadow-lg lg:max-w-none"
         >
           {notice}
         </div>

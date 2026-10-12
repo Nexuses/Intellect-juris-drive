@@ -58,7 +58,7 @@ export function NameDialog({
           defaultValue={initialName}
           maxLength={255}
           aria-label="Name"
-          className="h-12 w-full rounded-lg border border-sand px-4 text-[15px] text-ink outline-none transition hover:border-gold/70 focus:border-2 focus:border-gold focus:px-[15px]"
+          className="h-12 w-full rounded-lg border border-sand px-4 text-base text-ink outline-none transition sm:text-[15px] hover:border-gold/70 focus:border-2 focus:border-gold focus:px-[15px]"
         />
         {error && <p className="mt-2 text-xs text-[#8c3a32]">{error}</p>}
         <div className="mt-6 flex justify-end gap-2">

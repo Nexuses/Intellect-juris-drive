@@ -17,6 +17,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/files",
+    label: "File Management",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+        <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/analytics",
     label: "Analytics",
     icon: (
@@ -40,7 +49,7 @@ export function AdminSidebar({ name, email }: { name: string; email: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col px-3 py-4">
+    <aside className="flex h-full w-64 shrink-0 flex-col px-3 py-4 lg:h-screen">
       <Link href="/admin/dashboard" className="mb-6 flex shrink-0 justify-center pt-1">
         <Logo priority className="h-auto w-[120px]" />
       </Link>

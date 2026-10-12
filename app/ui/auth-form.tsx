@@ -11,7 +11,7 @@ type AuthFormProps = {
 };
 
 const inputClass =
-  "h-12 w-full rounded-xl border border-sand bg-white px-4 text-[15px] text-ink outline-none transition duration-200 placeholder:text-ink/35 hover:border-gold/70 focus:border-gold focus:ring-4 focus:ring-gold/15";
+  "h-12 w-full rounded-xl border border-sand bg-white px-4 text-base text-ink outline-none sm:text-[15px] transition duration-200 placeholder:text-ink/35 hover:border-gold/70 focus:border-gold focus:ring-4 focus:ring-gold/15";
 
 function Label({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (

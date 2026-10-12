@@ -95,11 +95,11 @@ export function ChatWidget({
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+    <div className="fixed bottom-[calc(1rem+var(--upload-panel-offset,0px))] right-4 z-50 flex flex-col items-end transition-[bottom] duration-200 sm:bottom-[calc(1.25rem+var(--upload-panel-offset,0px))] sm:right-5">
       {open && (
         <section
           aria-label="Jev chat"
-          className="mb-3 flex h-[min(32rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-sand bg-white shadow-[0_12px_40px_rgba(41,45,48,0.16)]"
+          className="mb-3 flex h-[min(32rem,calc(100dvh-6.5rem-var(--upload-panel-offset,0px)))] w-[calc(100vw-2rem)] flex-col sm:w-[min(24rem,calc(100vw-2.5rem))] lg:h-[min(32rem,calc(100vh-7rem-var(--upload-panel-offset,0px)))] overflow-hidden rounded-2xl border border-sand bg-white shadow-[0_12px_40px_rgba(41,45,48,0.16)]"
         >
           <header className="flex items-center gap-3 border-b border-sand px-4 py-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-cream">
@@ -111,7 +111,10 @@ export function ChatWidget({
             </div>
           </header>
 
-          <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-cream px-4 py-4">
+          <div
+            ref={listRef}
+            className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-cream px-3 py-4 sm:px-4"
+          >
             {messages.length === 0 && (
               <p className="text-sm leading-6 text-ink/70">
                 {hint}
@@ -122,11 +125,11 @@ export function ChatWidget({
                 key={`${message.role}-${index}`}
                 className={
                   message.role === "user"
-                    ? "ml-8 whitespace-pre-wrap rounded-2xl rounded-br-md bg-ink px-3 py-2 text-sm leading-6 text-cream"
-                    : "mr-8 whitespace-pre-wrap rounded-2xl rounded-bl-md bg-white px-3 py-2 text-sm leading-6 text-ink shadow-[0_1px_2px_rgba(41,45,48,0.06)]"
+                    ? "ml-6 min-w-0 max-w-full self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-ink px-3 py-2 text-sm leading-6 text-cream [overflow-wrap:anywhere] sm:ml-8"
+                    : "mr-4 min-w-0 max-w-full self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md bg-white px-3 py-2 text-sm leading-6 text-ink shadow-[0_1px_2px_rgba(41,45,48,0.06)] [overflow-wrap:anywhere] sm:mr-8"
                 }
               >
-                {message.content}
+                <MessageText text={message.content} invert={message.role === "user"} />
               </p>
             ))}
             {pending && <p className="text-sm text-ink/50">Jev is writing...</p>}
@@ -142,7 +145,7 @@ export function ChatWidget({
               aria-label="Message Jev"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={onKeyDown}
-              className="max-h-28 min-h-11 flex-1 resize-none rounded-xl border border-sand bg-cream px-3 py-2 text-sm text-ink outline-none placeholder:text-ink/40 focus:border-gold"
+              className="max-h-28 min-h-11 flex-1 resize-none rounded-xl border border-sand bg-cream px-3 py-2 text-base text-ink outline-none sm:text-sm placeholder:text-ink/40 focus:border-gold"
             />
             <button
               type="submit"
@@ -166,6 +169,27 @@ export function ChatWidget({
         {open ? <CloseIcon /> : <ChatIcon className="h-7 w-7" />}
       </button>
     </div>
+  );
+}
+
+const URL_PATTERN = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g;
+
+/** Message text with links made clickable. Long links wrap instead of overflowing the bubble. */
+function MessageText({ text, invert }: { text: string; invert: boolean }) {
+  return text.split(URL_PATTERN).map((part, index) =>
+    index % 2 === 1 ? (
+      <a
+        key={index}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`break-all underline underline-offset-2 ${invert ? "text-cream" : "text-gold hover:text-ink"}`}
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    ),
   );
 }
 

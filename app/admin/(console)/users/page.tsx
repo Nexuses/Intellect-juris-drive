@@ -21,7 +21,7 @@ export default async function UserManagementPage() {
       </p>
 
       <div className="mt-6 space-y-6">
-        <div className="rounded-2xl border border-sand bg-white p-6 shadow-[0_1px_2px_rgba(41,45,48,0.05)] transition hover:shadow-[0_16px_36px_-24px_rgba(165,139,96,0.7)]">
+        <div className="rounded-2xl border border-sand bg-white p-4 sm:p-6 shadow-[0_1px_2px_rgba(41,45,48,0.05)] transition hover:shadow-[0_16px_36px_-24px_rgba(165,139,96,0.7)]">
           <h2 className="text-lg font-semibold text-ink">Create User</h2>
           <p className="mb-5 mt-0.5 text-sm text-ink/60">
             The user can sign in with this email and password.
@@ -30,7 +30,8 @@ export default async function UserManagementPage() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-sand">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead className="border-b border-sand bg-cream text-ink/60">
               <tr>
                 <th className="px-5 py-3 font-medium">Name</th>
@@ -72,6 +73,7 @@ export default async function UserManagementPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

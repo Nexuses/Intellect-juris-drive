@@ -91,19 +91,19 @@ export default async function AdminAnalyticsPage() {
       <h1 className="text-[22px] font-normal">Analytics</h1>
       <p className="mt-1 text-sm text-ink/60">Uploads across every account in the firm.</p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {totalsCards.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-2xl border border-sand bg-white p-5 transition duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-[0_12px_28px_-18px_rgba(165,139,96,0.8)]"
+            className="rounded-2xl border border-sand bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-[0_12px_28px_-18px_rgba(165,139,96,0.8)] sm:p-5"
           >
             <p className="text-sm text-ink/60">{stat.label}</p>
-            <p className="mt-2 text-3xl font-normal text-ink">{stat.value}</p>
+            <p className="mt-2 text-2xl font-normal text-ink sm:text-3xl">{stat.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {typeStats.map((stat) => (
           <div
             key={stat.label}
@@ -116,7 +116,7 @@ export default async function AdminAnalyticsPage() {
       </div>
 
       <div className="mt-8 rounded-2xl border border-sand">
-        <div className="flex items-center justify-between gap-4 border-b border-sand px-5 py-4">
+        <div className="flex flex-col items-start gap-3 border-b border-sand px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
           <div>
             <h2 className="text-base font-medium">Jev document reading</h2>
             <p className="mt-0.5 text-xs text-ink/60">
@@ -129,7 +129,7 @@ export default async function AdminAnalyticsPage() {
             disabled={reading.waiting === 0 && reading.failed === 0}
           />
         </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 p-4 sm:p-5 lg:grid-cols-4">
           {readingStats.map((stat) => (
             <div key={stat.label} className="rounded-xl bg-cream px-4 py-3">
               <p className="text-xs text-ink/60">{stat.label}</p>
@@ -140,7 +140,7 @@ export default async function AdminAnalyticsPage() {
       </div>
 
       <div className="mt-8 overflow-hidden rounded-2xl border border-sand">
-        <div className="flex items-center justify-between border-b border-sand px-5 py-4">
+        <div className="flex items-center justify-between gap-3 border-b border-sand px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-base font-medium">Uploads by user</h2>
             <p className="mt-0.5 text-xs text-ink/60">
